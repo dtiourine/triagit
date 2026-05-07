@@ -3,14 +3,14 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class LLMRequest(BaseModel):
+class LLMInferenceRequest(BaseModel):
     model: str
     prompt: str
     max_tokens: int = 100
     temperature: float = 0.7
 
 
-class LLMResponse(BaseModel):
+class LLMInferenceResponse(BaseModel):
     job_id: str
     status: str
     model: str
