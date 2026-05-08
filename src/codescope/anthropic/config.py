@@ -4,11 +4,11 @@ from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class LLMConfig(BaseSettings):
+class AnthropicConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        env_prefix="LLM_",
+        env_prefix="ANTHROPIC_",
         extra="ignore",
     )
 
@@ -22,5 +22,5 @@ class LLMConfig(BaseSettings):
 
 
 @lru_cache(maxsize=1)
-def get_llm_config() -> LLMConfig:
-    return LLMConfig()
+def get_anthropic_config() -> AnthropicConfig:
+    return AnthropicConfig()

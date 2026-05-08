@@ -4,15 +4,21 @@ from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class GitHubSettings(BaseSettings):
+class GitHubConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        case_sensitive=False,
+        env_prefix="GITHUB_",
         extra="ignore",
     )
 
-    github_token: SecretStr
+    token: SecretStr
+    api_base_url: str = "https://api.github.com"
+    api_version: str = "2026-03-10"
+    user_agent: str = "codescope"
+    requests_per_hour: int = 5000
+    max_concurrent_requests: int = 10
+    timeout_seconds: float = 10.0
 
 
 @lru_cache(maxsize=1)
