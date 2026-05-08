@@ -1,6 +1,9 @@
 import httpx
 from datetime import datetime
+
+from codescope.github.schemas import RepoInfo
 from .config import GitHubConfig
+from .schemas import Commit
 
 
 class GitHubClient:
@@ -11,7 +14,7 @@ class GitHubClient:
         self.max_concurrent_requests = config.max_concurrent_requests
 
         self.headers = {
-            "Authorization": f"Bearer {self.token}",
+            "Authorization": f"Bearer {self.token.get_secret_value()}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2026-03-10",
         }
@@ -22,10 +25,11 @@ class GitHubClient:
         async with httpx.AsyncClient(
             base_url=self.api_base_url, headers=self.headers, timeout=10.0
         ) as client:
-            response = await client.get(url, headers=self.headers, timeout=10.0)
+            raw = await client.get(url, headers=self.headers, timeout=10.0)
 
-        if response.status_code == 200:
-            return response.json()
+        if raw.status_code == 200:
+            return RepoInfo.model_validate(raw.json())
+
         else:
             raise ValueError("Failed to fetch repository")
 
@@ -36,17 +40,18 @@ class GitHubClient:
         since: datetime | None = None,
         max_pages=None,
     ):
-        url = f"{self.api_base_url}/repos/{repo_owner}/{repo_name}/commits?since={since}&per_page=100"
+        url = f"{self.api_base_url}/repos/{repo_owner}/{repo_name}/commits?per_page=100"
         if since:
             url += f"&since={since}"
 
         async with httpx.AsyncClient(
             base_url=self.api_base_url, headers=self.headers, timeout=10.0
         ) as client:
-            response = await client.get(url, headers=self.headers, timeout=10.0)
+            raws = await client.get(url, headers=self.headers, timeout=10.0)
 
-        if response.status_code == 200:
-            return response.json()
+        if raws.status_code == 200:
+            return [Commit.model_validate(r) for r in raws.json()]  # correct
+
         else:
             raise ValueError("Failed to fetch repository commits")
 
@@ -107,7 +112,7 @@ class GitHubClient:
             raise ValueError("Failed to fetch repository tree")
 
     async def get_file_content(
-        self, repo_owner: str, repo_name: str, file_path: str, ref: str | None = None
+        self, repo_owner: str, repo_name: str, file_path: str, ref: str
     ):
         url = f"{self.api_base_url}/repos/{repo_owner}/{repo_name}/contents/{file_path}?ref={ref}"
 
