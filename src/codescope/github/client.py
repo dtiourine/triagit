@@ -2,6 +2,16 @@ import httpx
 from datetime import datetime
 
 from .config import GitHubConfig
+from .exceptions import (
+    GitHubAPIError,
+    GitHubForbiddenError,
+    GitHubNotFoundError,
+    GitHubRateLimitError,
+    GitHubServerError,
+    GitHubTransportError,
+    GitHubUnauthorizedError,
+    GitHubValidationError,
+)
 from .schemas import (
     Commit,
     Contributor,
@@ -35,9 +45,40 @@ class GitHubClient:
         await self._client.aclose()
 
     async def _get(self, path: str, params: dict | None = None):
-        response = await self._client.get(path, params=params)
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = await self._client.get(path, params=params)
+        except httpx.RequestError as e:
+            raise GitHubTransportError(str(e)) from e
+
+        if response.is_success:
+            return response.json()
+
+        try:
+            body = response.json()
+        except Exception:
+            body = {}
+
+        message = body.get("message", response.reason_phrase)
+        status = response.status_code
+
+        match status:
+            case 401:
+                raise GitHubUnauthorizedError(message, status, body)
+            case 403 if response.headers.get("X-RateLimit-Remaining") == "0":
+                raise GitHubRateLimitError(
+                    message, status, body,
+                    reset_at=response.headers.get("X-RateLimit-Reset"),
+                )
+            case 403:
+                raise GitHubForbiddenError(message, status, body)
+            case 404:
+                raise GitHubNotFoundError(message, status, body)
+            case 422:
+                raise GitHubValidationError(message, status, body)
+            case _ if status >= 500:
+                raise GitHubServerError(message, status, body)
+            case _:
+                raise GitHubAPIError(message, status, body)
 
     async def get_repo(self, repo_owner: str, repo_name: str) -> RepoInfo:
         data = await self._get(f"/repos/{repo_owner}/{repo_name}")
