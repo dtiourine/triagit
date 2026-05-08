@@ -2,7 +2,7 @@ import base64
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 
 class GitHubModel(BaseModel):
@@ -96,6 +96,7 @@ class Issue(GitHubModel):
 class PullRequest(GitHubModel):
     number: int
     state: Literal["open", "closed"]
+    draft: bool
     created_at: datetime
     updated_at: datetime
     closed_at: datetime | None
@@ -158,12 +159,15 @@ class FileContent(GitHubModel):
 class LanguageBreakdown(GitHubModel):
     bytes_per_language: dict[str, int]
 
-    @classmethod
-    def from_response(cls, raw: dict[str, int]) -> "LanguageBreakdown":
-        return cls(bytes_per_language=raw)
-
     @property
     def primary(self) -> str | None:
         if not self.bytes_per_language:
             return None
         return max(self.bytes_per_language.items(), key=lambda x: x[1])[0]
+
+    @model_validator(mode="before")
+    @classmethod
+    def wrap_raw(cls, v):
+        if isinstance(v, dict) and "bytes_per_language" not in v:
+            return {"bytes_per_language": v}
+        return v
