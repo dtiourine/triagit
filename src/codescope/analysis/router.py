@@ -1,16 +1,16 @@
-from fastapi import APIRouter
+from typing import Annotated
 
-from codescope.github.schemas import RepoInfo
+from fastapi import APIRouter, Query
 
 from .dependencies import AnalysisServiceDep
+from .schemas import GetRepoResponse, GitHubRepoUrl
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 
-@router.get("/repos/{owner}/{repo}", response_model=RepoInfo)
+@router.get("/repo", response_model=GetRepoResponse)
 async def get_repo(
-    owner: str,
-    repo: str,
+    url: Annotated[GitHubRepoUrl, Query()],
     service: AnalysisServiceDep,
-) -> RepoInfo:
-    return await service.get_repo(owner, repo)
+) -> GetRepoResponse:
+    return await service.get_repo(url)
