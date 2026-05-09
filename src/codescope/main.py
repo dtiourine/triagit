@@ -7,7 +7,7 @@ from codescope.github.exceptions import GitHubAPIError, GitHubTransportError
 
 app = FastAPI()
 
-app.include_router(analysis_router)
+app.include_router(analysis_router, prefix="/api/v1")
 
 
 @app.exception_handler(RequestValidationError)
