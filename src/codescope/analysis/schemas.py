@@ -8,8 +8,6 @@ from .utils import validate_github_url
 GitHubRepoUrl = Annotated[str, AfterValidator(validate_github_url)]
 
 
-# --- Requests ---
-
 class RepoRequest(BaseModel):
     url: GitHubRepoUrl
 
@@ -34,8 +32,6 @@ class GetFileContentRequest(RepoRequest):
     file_path: str
     ref: str | None = None
 
-
-# --- Responses ---
 
 class GetRepoResponse(BaseModel):
     full_name: str

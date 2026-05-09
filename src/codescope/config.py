@@ -1,4 +1,3 @@
-from pydantic import PostgresDsn, RedisDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,9 +8,6 @@ class GlobalConfig(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
-
-    database_url: PostgresDsn
-    redis_url: RedisDsn
 
     max_concurrent_github_requests: int = 10
     max_concurrent_llm_requests: int = 5
