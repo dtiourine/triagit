@@ -93,3 +93,17 @@ class FileContentResponse(BaseModel):
 
 class LanguageBreakdownResponse(BaseModel):
     bytes_per_language: dict[str, int]
+
+
+class AnalysisRequest(BaseModel):
+    repo_url: GitHubRepoUrl
+
+
+class AnalysisResponse(BaseModel):
+    repo: GetRepoResponse
+    commits: list[CommitResponse]
+    contributors: list[ContributorResponse]
+    issues: list[IssueResponse]
+    pulls: list[PullRequestResponse]
+    tree: list[TreeEntryResponse]
+    languages: LanguageBreakdownResponse

@@ -1,9 +1,11 @@
-from datetime import datetime
+import asyncio
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 from codescope.github.client import GitHubClient
 
 from .schemas import (
+    AnalysisResponse,
     CommitResponse,
     ContributorResponse,
     FileContentResponse,
@@ -92,3 +94,27 @@ class AnalysisService:
         owner, repo = self._parse_repo_url(url)
         breakdown = await self.github.get_languages(owner, repo)
         return LanguageBreakdownResponse.model_validate(breakdown.model_dump())
+
+    async def fetch_full_report(self, url: str) -> AnalysisResponse:
+        since = datetime.now(timezone.utc) - timedelta(days=90)
+
+        repo = await self.get_repo(url)
+
+        commits, contributors, issues, pulls, tree, languages = await asyncio.gather(
+            self.list_commits(url, since=since),
+            self.list_contributors(url),
+            self.list_issues(url),
+            self.list_pulls(url),
+            self.get_tree(url, repo.default_branch),
+            self.get_languages(url),
+        )
+
+        return AnalysisResponse(
+            repo=repo,
+            commits=commits,
+            contributors=contributors,
+            issues=issues,
+            pulls=pulls,
+            tree=tree,
+            languages=languages,
+        )

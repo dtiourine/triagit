@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends
 
 from .dependencies import AnalysisServiceDep
 from .schemas import (
+    AnalysisRequest,
+    AnalysisResponse,
     CommitResponse,
     ContributorResponse,
     FileContentResponse,
@@ -85,3 +87,11 @@ async def get_languages(
     service: AnalysisServiceDep,
 ) -> LanguageBreakdownResponse:
     return await service.get_languages(params.url)
+
+
+@router.post("/analyses", response_model=AnalysisResponse)
+async def analyze(
+    body: AnalysisRequest,
+    service: AnalysisServiceDep,
+) -> AnalysisResponse:
+    return await service.fetch_full_report(body.repo_url)
