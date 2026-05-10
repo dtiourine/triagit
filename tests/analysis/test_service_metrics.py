@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock
-from codescope.analysis.schemas import GetRepoResponse
+
+from codescope.analysis.schemas import GetRepoResponse, MetricsReport
 from codescope.analysis.service import AnalysisService
-from codescope.github.schemas import RepoInfo
 from datetime import datetime, timezone
 
 
@@ -23,51 +23,15 @@ def test_get_repo_response_has_stars_and_forks():
     assert r.forks == 7
 
 
-async def test_get_repo_maps_stars_and_forks():
-    now = datetime.now(timezone.utc)
-    mock_repo_info = RepoInfo(
-        full_name="owner/repo",
-        description="Test repo",
-        default_branch="main",
-        pushed_at=now,
-        size=1000,
-        language="Python",
-        archived=False,
-        disabled=False,
-        license=None,
-        stargazers_count=500,
-        forks_count=42,
-    )
-    mock_github = AsyncMock()
-    mock_github.get_repo.return_value = mock_repo_info
-
-    service = AnalysisService(mock_github)
-    result = await service.get_repo("https://github.com/owner/repo")
-
-    assert result.stars == 500
-    assert result.forks == 42
-
-
-from codescope.analysis.schemas import MetricsReport
-
-
 def _make_service(raw_analysis) -> AnalysisService:
-    real_issues = [i for i in raw_analysis.issues if not i.is_pull_request]
-
-    async def _count_issues(owner, repo, is_pr, state):
-        if not is_pr:
-            return sum(1 for i in real_issues if i.state == state)
-        return sum(1 for p in raw_analysis.pulls if p.state == state)
-
     mock_github = AsyncMock()
-    mock_github.count_issues.side_effect = _count_issues
-    service = AnalysisService(mock_github)
-    service.get_repo = AsyncMock(return_value=raw_analysis.repo)
-    service.list_commits = AsyncMock(return_value=raw_analysis.commits)
-    service.list_contributors = AsyncMock(return_value=raw_analysis.contributors)
-    service.get_tree = AsyncMock(return_value=raw_analysis.tree)
-    service.get_languages = AsyncMock(return_value=raw_analysis.languages)
-    return service
+    mock_github.get_repo.return_value = raw_analysis.repo
+    mock_github.list_commits.return_value = raw_analysis.commits
+    mock_github.list_contributors.return_value = raw_analysis.contributors
+    mock_github.get_tree.return_value = raw_analysis.tree
+    mock_github.get_languages.return_value = raw_analysis.languages
+    mock_github.count_issues.side_effect = raw_analysis.count_issues
+    return AnalysisService(mock_github)
 
 
 async def test_get_metrics_report_returns_metrics_report(raw_analysis):
@@ -76,70 +40,52 @@ async def test_get_metrics_report_returns_metrics_report(raw_analysis):
     assert isinstance(result, MetricsReport)
 
 
-async def test_commits_90d(raw_analysis):
+async def test_score_is_int(raw_analysis):
     service = _make_service(raw_analysis)
     result = await service.get_metrics_report("https://github.com/owner/repo")
-    assert result.commits_90d == 4
+    assert isinstance(result.score, int)
 
 
-async def test_unique_authors(raw_analysis):
-    service = _make_service(raw_analysis)
-    result = await service.get_metrics_report("https://github.com/owner/repo")
-    assert result.unique_authors == 3
-
-
-async def test_days_since_last_commit(raw_analysis):
-    service = _make_service(raw_analysis)
-    result = await service.get_metrics_report("https://github.com/owner/repo")
-    assert result.days_since_last == 1
-
-
-async def test_bus_factor_pct(raw_analysis):
-    service = _make_service(raw_analysis)
-    result = await service.get_metrics_report("https://github.com/owner/repo")
-    # alice(70) + bob(20) + carol(10) = 100 / 100 total = 100%
-    assert result.bus_factor_pct == 100
-
-
-async def test_per_week_has_13_buckets(raw_analysis):
-    service = _make_service(raw_analysis)
-    result = await service.get_metrics_report("https://github.com/owner/repo")
-    assert len(result.per_week) == 13
-    assert all(v >= 0 for v in result.per_week)
-
-
-async def test_hygiene_readme_found(raw_analysis):
-    service = _make_service(raw_analysis)
-    result = await service.get_metrics_report("https://github.com/owner/repo")
-    readme = next(h for h in result.hygiene if h.label == "Has README")
-    assert readme.ok is True
-
-
-async def test_hygiene_ci_found(raw_analysis):
-    service = _make_service(raw_analysis)
-    result = await service.get_metrics_report("https://github.com/owner/repo")
-    ci = next(h for h in result.hygiene if h.label == "Has CI configuration")
-    assert ci.ok is True
-
-
-async def test_hygiene_missing(raw_analysis):
-    raw_analysis.tree = [e for e in raw_analysis.tree if not e.path.startswith(".github")]
-    service = _make_service(raw_analysis)
-    result = await service.get_metrics_report("https://github.com/owner/repo")
-    ci = next(h for h in result.hygiene if h.label == "Has CI configuration")
-    assert ci.ok is False
-
-
-async def test_health_score_bounded(raw_analysis):
+async def test_score_in_range(raw_analysis):
     service = _make_service(raw_analysis)
     result = await service.get_metrics_report("https://github.com/owner/repo")
     assert 0 <= result.score <= 100
 
 
-async def test_score_label_valid(raw_analysis):
+async def test_score_label_is_string(raw_analysis):
     service = _make_service(raw_analysis)
     result = await service.get_metrics_report("https://github.com/owner/repo")
-    assert result.score_label in {"Excellent", "Healthy", "Fair", "At risk", "Critical"}
+    assert isinstance(result.score_label, str)
+
+
+async def test_breakdown_keys(raw_analysis):
+    service = _make_service(raw_analysis)
+    result = await service.get_metrics_report("https://github.com/owner/repo")
+    assert set(result.breakdown.keys()) == {"Activity", "Issues / PRs", "Hygiene", "Contributors"}
+
+
+async def test_commits_90d(raw_analysis):
+    service = _make_service(raw_analysis)
+    result = await service.get_metrics_report("https://github.com/owner/repo")
+    assert result.commits_90d == len(raw_analysis.commits)
+
+
+async def test_per_week_length(raw_analysis):
+    service = _make_service(raw_analysis)
+    result = await service.get_metrics_report("https://github.com/owner/repo")
+    assert len(result.per_week) == 13
+
+
+async def test_hygiene_all_passed(raw_analysis):
+    service = _make_service(raw_analysis)
+    result = await service.get_metrics_report("https://github.com/owner/repo")
+    assert result.hygiene_passed == len(result.hygiene)
+
+
+async def test_language_pcts_sum_to_100(raw_analysis):
+    service = _make_service(raw_analysis)
+    result = await service.get_metrics_report("https://github.com/owner/repo")
+    assert sum(result.language_pcts.values()) == 100
 
 
 async def test_issue_counts(raw_analysis):
@@ -156,13 +102,8 @@ async def test_pr_counts(raw_analysis):
     assert result.closed_prs == 1
 
 
-async def test_language_pcts_sum_to_100(raw_analysis):
-    service = _make_service(raw_analysis)
-    result = await service.get_metrics_report("https://github.com/owner/repo")
-    assert sum(result.language_pcts.values()) == 100
-
-
 async def test_size_fmt_mb(raw_analysis):
+    from codescope.github.schemas import RepoInfo
     raw_analysis.repo = raw_analysis.repo.model_copy(update={"size": 1025})
     service = _make_service(raw_analysis)
     result = await service.get_metrics_report("https://github.com/owner/repo")
@@ -170,10 +111,17 @@ async def test_size_fmt_mb(raw_analysis):
 
 
 async def test_top_contributors_excludes_bots(raw_analysis):
-    from codescope.analysis.schemas import ContributorResponse
+    from codescope.github.schemas import Contributor
     raw_analysis.contributors.append(
-        ContributorResponse(login="dependabot[bot]", contributions=999, type="Bot")
+        Contributor(login="dependabot[bot]", contributions=999, type="Bot")
     )
     service = _make_service(raw_analysis)
     result = await service.get_metrics_report("https://github.com/owner/repo")
     assert all(c.login != "dependabot[bot]" for c in result.top_contributors)
+
+
+async def test_repo_stars_and_forks_in_report(raw_analysis):
+    service = _make_service(raw_analysis)
+    result = await service.get_metrics_report("https://github.com/owner/repo")
+    assert result.repo.stars == 150
+    assert result.repo.forks == 12

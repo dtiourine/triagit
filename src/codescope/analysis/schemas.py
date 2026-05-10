@@ -8,29 +8,8 @@ from .utils import validate_github_url
 GitHubRepoUrl = Annotated[str, AfterValidator(validate_github_url)]
 
 
-class RepoRequest(BaseModel):
-    url: GitHubRepoUrl
-
-
-class ListCommitsRequest(RepoRequest):
-    since: datetime | None = None
-
-
-class ListIssuesRequest(RepoRequest):
-    state: str = "all"
-
-
-class ListPullsRequest(RepoRequest):
-    state: str = "all"
-
-
-class GetTreeRequest(RepoRequest):
-    tree_sha: str
-
-
-class GetFileContentRequest(RepoRequest):
-    file_path: str
-    ref: str | None = None
+class AnalysisRequest(BaseModel):
+    repo_url: GitHubRepoUrl
 
 
 class GetRepoResponse(BaseModel):
@@ -46,55 +25,10 @@ class GetRepoResponse(BaseModel):
     forks: int = 0
 
 
-class CommitResponse(BaseModel):
-    sha: str
-    author: str
-    authored_at: datetime
-
-
 class ContributorResponse(BaseModel):
     login: str
     contributions: int
     type: str
-
-
-class IssueResponse(BaseModel):
-    number: int
-    state: str
-    created_at: datetime
-    closed_at: datetime | None
-    is_pull_request: bool
-
-
-class PullRequestResponse(BaseModel):
-    number: int
-    state: str
-    draft: bool
-    created_at: datetime
-    merged_at: datetime | None
-    was_merged: bool
-
-
-class TreeEntryResponse(BaseModel):
-    path: str
-    type: str
-    sha: str
-
-
-class FileContentResponse(BaseModel):
-    name: str
-    path: str
-    sha: str
-    size: int
-    content: str
-
-
-class LanguageBreakdownResponse(BaseModel):
-    bytes_per_language: dict[str, int]
-
-
-class AnalysisRequest(BaseModel):
-    repo_url: GitHubRepoUrl
 
 
 class HygieneCheck(BaseModel):

@@ -3,19 +3,9 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 from codescope.github.client import GitHubClient
+from codescope.github.schemas import RepoInfo
 
-from .schemas import (
-    CommitResponse,
-    ContributorResponse,
-    FileContentResponse,
-    GetRepoResponse,
-    HygieneCheck,
-    IssueResponse,
-    LanguageBreakdownResponse,
-    MetricsReport,
-    PullRequestResponse,
-    TreeEntryResponse,
-)
+from .schemas import ContributorResponse, GetRepoResponse, HygieneCheck, MetricsReport
 
 
 class AnalysisService:
@@ -26,106 +16,28 @@ class AnalysisService:
         owner, repo = urlparse(url).path.strip("/").split("/")[:2]
         return owner, repo
 
-    async def get_repo(self, url: str) -> GetRepoResponse:
-        owner, repo = self._parse_repo_url(url)
-        data = await self.github.get_repo(owner, repo)
-        return GetRepoResponse(
-            full_name=data.full_name,
-            description=data.description,
-            default_branch=data.default_branch,
-            pushed_at=data.pushed_at,
-            size=data.size,
-            language=data.language,
-            archived=data.archived,
-            disabled=data.disabled,
-            stars=data.stargazers_count,
-            forks=data.forks_count,
-        )
-
-    async def list_commits(self, url: str, since: datetime | None = None) -> list[CommitResponse]:
-        owner, repo = self._parse_repo_url(url)
-        commits = await self.github.list_commits(owner, repo, since=since)
-        return [
-            CommitResponse(sha=c.sha, author=c.author_identity, authored_at=c.authored_at)
-            for c in commits
-        ]
-
-    async def list_contributors(self, url: str) -> list[ContributorResponse]:
-        owner, repo = self._parse_repo_url(url)
-        contributors = await self.github.list_contributors(owner, repo)
-        return [ContributorResponse.model_validate(c.model_dump()) for c in contributors]
-
-    async def list_issues(self, url: str, state: str = "all") -> list[IssueResponse]:
-        owner, repo = self._parse_repo_url(url)
-        issues = await self.github.list_issues(owner, repo, state=state)
-        return [
-            IssueResponse(
-                number=i.number,
-                state=i.state,
-                created_at=i.created_at,
-                closed_at=i.closed_at,
-                is_pull_request=i.is_pull_request,
-            )
-            for i in issues
-        ]
-
-    async def list_pulls(self, url: str, state: str = "all") -> list[PullRequestResponse]:
-        owner, repo = self._parse_repo_url(url)
-        pulls = await self.github.list_pulls(owner, repo, state=state)
-        return [
-            PullRequestResponse(
-                number=p.number,
-                state=p.state,
-                draft=p.draft,
-                created_at=p.created_at,
-                merged_at=p.merged_at,
-                was_merged=p.was_merged,
-            )
-            for p in pulls
-        ]
-
-    async def get_tree(self, url: str, tree_sha: str) -> list[TreeEntryResponse]:
-        owner, repo = self._parse_repo_url(url)
-        tree = await self.github.get_tree(owner, repo, tree_sha)
-        return [TreeEntryResponse.model_validate(e.model_dump()) for e in tree.tree]
-
-    async def get_file_content(
-        self, url: str, file_path: str, ref: str | None = None
-    ) -> FileContentResponse:
-        owner, repo = self._parse_repo_url(url)
-        file = await self.github.get_file_content(owner, repo, file_path, ref=ref)
-        return FileContentResponse(
-            name=file.name,
-            path=file.path,
-            sha=file.sha,
-            size=file.size,
-            content=file.decoded_text(),
-        )
-
-    async def get_languages(self, url: str) -> LanguageBreakdownResponse:
-        owner, repo = self._parse_repo_url(url)
-        breakdown = await self.github.get_languages(owner, repo)
-        return LanguageBreakdownResponse.model_validate(breakdown.model_dump())
-
     async def get_metrics_report(self, url: str) -> MetricsReport:
         now = datetime.now(timezone.utc)
         since = now - timedelta(days=90)
-
         owner, repo_name = self._parse_repo_url(url)
-        repo = await self.get_repo(url)
-        (commits, contributors, tree, languages), (open_issues, closed_issues, open_prs, closed_prs) = await asyncio.gather(
-            asyncio.gather(
-                self.list_commits(url, since=since),
-                self.list_contributors(url),
-                self.get_tree(url, repo.default_branch),
-                self.get_languages(url),
-            ),
-            asyncio.gather(
-                self.github.count_issues(owner, repo_name, is_pr=False, state="open"),
-                self.github.count_issues(owner, repo_name, is_pr=False, state="closed"),
-                self.github.count_issues(owner, repo_name, is_pr=True,  state="open"),
-                self.github.count_issues(owner, repo_name, is_pr=True,  state="closed"),
-            ),
+
+        repo: RepoInfo = await self.github.get_repo(owner, repo_name)
+
+        (commits, contributors, tree, languages), (open_issues, closed_issues, open_prs, closed_prs) = (
+            await asyncio.gather(
+                asyncio.gather(
+                    self.github.list_commits(owner, repo_name, since=since),
+                    self.github.list_contributors(owner, repo_name),
+                    self.github.get_tree(owner, repo_name, repo.default_branch),
+                    self.github.get_languages(owner, repo_name),
+                ),
+                asyncio.gather(
+                    self.github.count_issues(owner, repo_name, is_pr=False, state="open"),
+                    self.github.count_issues(owner, repo_name, is_pr=False, state="closed"),
+                    self.github.count_issues(owner, repo_name, is_pr=True,  state="open"),
+                    self.github.count_issues(owner, repo_name, is_pr=True,  state="closed"),
+                ),
+            )
         )
 
         # Commit activity
@@ -133,7 +45,7 @@ class AnalysisService:
         if latest and latest.tzinfo is None:
             latest = latest.replace(tzinfo=timezone.utc)
         days_since_last = (now - latest).days if latest else 999
-        unique_authors = len({c.author for c in commits})
+        unique_authors = len({c.author_identity for c in commits})
 
         buckets = [0] * 13
         for c in commits:
@@ -144,14 +56,17 @@ class AnalysisService:
         per_week = buckets
 
         # Contributors (exclude bots)
-        non_bot_contributors = [c for c in contributors if c.type != "Bot"]
-        top_contributors = sorted(non_bot_contributors, key=lambda c: -c.contributions)[:5]
+        non_bot = [c for c in contributors if c.type != "Bot"]
+        top_contributors = [
+            ContributorResponse(login=c.login, contributions=c.contributions, type=c.type)
+            for c in sorted(non_bot, key=lambda c: -c.contributions)[:5]
+        ]
         total_contrib = sum(c.contributions for c in contributors)
         top3 = sum(c.contributions for c in sorted(contributors, key=lambda c: -c.contributions)[:3])
         bus_factor_pct = round(top3 / total_contrib * 100) if total_contrib else 0
 
         # Hygiene
-        tree_paths = {e.path for e in tree}
+        tree_paths = {e.path for e in tree.tree}
         hygiene = _hygiene(tree_paths)
         hygiene_passed = sum(1 for h in hygiene if h.ok)
 
@@ -221,7 +136,18 @@ class AnalysisService:
 
         return MetricsReport(
             slug=repo.full_name,
-            repo=repo,
+            repo=GetRepoResponse(
+                full_name=repo.full_name,
+                description=repo.description,
+                default_branch=repo.default_branch,
+                pushed_at=repo.pushed_at,
+                size=repo.size,
+                language=repo.language,
+                archived=repo.archived,
+                disabled=repo.disabled,
+                stars=repo.stargazers_count,
+                forks=repo.forks_count,
+            ),
             size_fmt=size_fmt,
             score=score,
             score_label=score_label,
@@ -264,5 +190,3 @@ def _hygiene(paths: set[str]) -> list[HygieneCheck]:
         HygieneCheck(ok=has_prefix("tests/") or has_prefix("test/"),             label="Has tests/ directory"),
         HygieneCheck(ok=has(".gitignore"),                                        label="Has .gitignore"),
     ]
-
-
