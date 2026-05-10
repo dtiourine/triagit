@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`codescope` is a FastAPI service that analyzes the health of any GitHub repository. It fetches repo metadata, commits, contributors, issues, PRs, file tree, and language breakdown via the GitHub API and returns a consolidated report. LLM-based analysis (`src/codescope/llm/`) is under active development.
+`triagit` is a FastAPI service that analyzes the health of any GitHub repository. It fetches repo metadata, commits, contributors, issues, PRs, file tree, and language breakdown via the GitHub API and returns a consolidated report. LLM-based analysis (`src/triagit/llm/`) is under active development.
 
 ## Commands
 
@@ -15,7 +15,7 @@ uv pip install --system -e ".[dev]"
 pip install -e ".[dev]"
 
 # Run dev server
-uvicorn codescope.main:app --reload
+uvicorn triagit.main:app --reload
 
 # Lint
 ruff check src/
@@ -59,11 +59,11 @@ HTTP request
 
 ### Module layout
 
-- **`codescope/main.py`** — FastAPI app entry point; registers the analysis router and global exception handlers for `GitHubAPIError` and `GitHubTransportError`.
-- **`codescope/analysis/`** — The core domain layer. `router.py` defines all endpoints under `/api/v1/analysis`. `service.py` is the only place that calls `GitHubClient`. `dependencies.py` wires FastAPI DI: each request gets a fresh `GitHubClient` instance (via async context manager) and a new `AnalysisService`.
-- **`codescope/github/`** — Self-contained GitHub API client. `schemas.py` holds frozen Pydantic models that mirror GitHub's JSON. `exceptions.py` has a hierarchy rooted at `GitHubClientError`; the client maps HTTP status codes to specific exception types. Rate-limit detection checks the `X-RateLimit-Remaining` header specifically.
-- **`codescope/llm/`** — New module (in progress). `providers/` will hold `anthropic.py` and `openai.py` implementations. `config.py` has a commented-out `AnthropicConfig` template to follow when implementing.
-- **`codescope/config.py`** — `GlobalConfig` with app-wide limits: `max_concurrent_github_requests`, `max_concurrent_llm_requests`, `daily_llm_budget_usd`, `per_ip_daily_analyses`.
+- **`triagit/main.py`** — FastAPI app entry point; registers the analysis router and global exception handlers for `GitHubAPIError` and `GitHubTransportError`.
+- **`triagit/analysis/`** — The core domain layer. `router.py` defines all endpoints under `/api/v1/analysis`. `service.py` is the only place that calls `GitHubClient`. `dependencies.py` wires FastAPI DI: each request gets a fresh `GitHubClient` instance (via async context manager) and a new `AnalysisService`.
+- **`triagit/github/`** — Self-contained GitHub API client. `schemas.py` holds frozen Pydantic models that mirror GitHub's JSON. `exceptions.py` has a hierarchy rooted at `GitHubClientError`; the client maps HTTP status codes to specific exception types. Rate-limit detection checks the `X-RateLimit-Remaining` header specifically.
+- **`triagit/llm/`** — New module (in progress). `providers/` will hold `anthropic.py` and `openai.py` implementations. `config.py` has a commented-out `AnthropicConfig` template to follow when implementing.
+- **`triagit/config.py`** — `GlobalConfig` with app-wide limits: `max_concurrent_github_requests`, `max_concurrent_llm_requests`, `daily_llm_budget_usd`, `per_ip_daily_analyses`.
 
 ### Schema pattern
 

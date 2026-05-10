@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Analyzing {{ slug }} — codescope{% endblock %}
+{% block title %}Analyzing {{ slug }} — triagit{% endblock %}
 
 {% block content %}
-<div class="cs-loading">
-  <div class="cs-loading-card">
-    <div class="cs-loading-head">
-      <div class="cs-loading-target">
-        <span class="cs-loading-spin" aria-hidden="true">
+<div class="tg-loading">
+  <div class="tg-loading-card">
+    <div class="tg-loading-head">
+      <div class="tg-loading-target">
+        <span class="tg-loading-spin" aria-hidden="true">
           <svg width="14" height="14" viewBox="0 0 14 14">
             <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-opacity=".18" stroke-width="1.4" fill="none"/>
             <path d="M12 7a5 5 0 00-5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/>
@@ -14,10 +14,10 @@
         </span>
         <span class="mono">{{ slug }}</span>
       </div>
-      <a href="/" class="cs-btn cs-btn-ghost">Cancel</a>
+      <a href="/" class="tg-btn tg-btn-ghost">Cancel</a>
     </div>
 
-    <ol class="cs-stages" id="stages-list">
+    <ol class="tg-stages" id="stages-list">
       {% set stages = [
         "Resolving repository…",
         "Fetching repository metadata…",
@@ -28,11 +28,11 @@
         "Computing health score…"
       ] %}
       {% for stage in stages %}
-      <li class="cs-stage {% if loop.first %}cs-stage-active{% else %}cs-stage-pending{% endif %}"
+      <li class="tg-stage {% if loop.first %}tg-stage-active{% else %}tg-stage-pending{% endif %}"
           data-index="{{ loop.index0 }}">
-        <span class="cs-stage-mark" aria-hidden="true">
+        <span class="tg-stage-mark" aria-hidden="true">
           {% if loop.first %}
-          <svg class="cs-spin" width="12" height="12" viewBox="0 0 14 14">
+          <svg class="tg-spin" width="12" height="12" viewBox="0 0 14 14">
             <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-opacity=".18" stroke-width="1.4" fill="none"/>
             <path d="M12 7a5 5 0 00-5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/>
           </svg>
@@ -40,32 +40,32 @@
           <svg width="6" height="6" viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" fill="currentColor"/></svg>
           {% endif %}
         </span>
-        <span class="cs-stage-label">{{ stage }}</span>
+        <span class="tg-stage-label">{{ stage }}</span>
       </li>
       {% endfor %}
     </ol>
 
-    <div class="cs-progress" aria-hidden="true">
-      <div class="cs-progress-fill" id="progress-fill" style="width: 14%"></div>
+    <div class="tg-progress" aria-hidden="true">
+      <div class="tg-progress-fill" id="progress-fill" style="width: 14%"></div>
     </div>
   </div>
 </div>
 
 <script>
 (function () {
-  const stages = document.querySelectorAll('.cs-stage');
+  const stages = document.querySelectorAll('.tg-stage');
   const fill = document.getElementById('progress-fill');
   const total = stages.length;
   let current = 0;
 
   const checkSvg = `<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 7.4L5.8 10 11 4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  const spinSvg = `<svg class="cs-spin" width="12" height="12" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-opacity=".18" stroke-width="1.4" fill="none"/><path d="M12 7a5 5 0 00-5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>`;
+  const spinSvg = `<svg class="tg-spin" width="12" height="12" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-opacity=".18" stroke-width="1.4" fill="none"/><path d="M12 7a5 5 0 00-5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>`;
 
   // Animation: tick through every stage, resolve when the last one is done
   const animationDone = new Promise(resolve => {
     const interval = setInterval(() => {
-      stages[current].className = 'cs-stage cs-stage-done';
-      stages[current].querySelector('.cs-stage-mark').innerHTML = checkSvg;
+      stages[current].className = 'tg-stage tg-stage-done';
+      stages[current].querySelector('.tg-stage-mark').innerHTML = checkSvg;
       current++;
       fill.style.width = (current / total * 100) + '%';
 
@@ -75,8 +75,8 @@
         return;
       }
 
-      stages[current].className = 'cs-stage cs-stage-active';
-      stages[current].querySelector('.cs-stage-mark').innerHTML = spinSvg;
+      stages[current].className = 'tg-stage tg-stage-active';
+      stages[current].querySelector('.tg-stage-mark').innerHTML = spinSvg;
     }, 3200 / total);
   });
 

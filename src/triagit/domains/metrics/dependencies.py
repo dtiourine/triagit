@@ -2,8 +2,8 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from codescope.infrastructure.github.client import GitHubClient
-from codescope.infrastructure.github.config import get_github_config
+from triagit.infrastructure.github.client import GitHubClient
+from triagit.infrastructure.github.config import get_github_config
 
 from .service import AnalysisService
 

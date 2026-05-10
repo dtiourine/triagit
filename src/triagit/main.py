@@ -5,9 +5,9 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from codescope.domains.metrics.router import router as metrics_router
-from codescope.infrastructure.github.exceptions import GitHubAPIError, GitHubTransportError
-from codescope.domains.web.router import router as web_router, templates
+from triagit.domains.metrics.router import router as metrics_router
+from triagit.infrastructure.github.exceptions import GitHubAPIError, GitHubTransportError
+from triagit.domains.web.router import router as web_router, templates
 
 app = FastAPI()
 

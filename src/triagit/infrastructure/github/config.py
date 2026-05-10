@@ -15,7 +15,7 @@ class GitHubConfig(BaseSettings):
     token: SecretStr
     api_base_url: str = "https://api.github.com"
     api_version: str = "2026-03-10"
-    user_agent: str = "codescope"
+    user_agent: str = "triagit"
     requests_per_hour: int = 5000
     max_concurrent_requests: int = 10
     timeout_seconds: float = 10.0
