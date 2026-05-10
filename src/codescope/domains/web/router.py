@@ -3,7 +3,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from codescope.domains.analysis.service import AnalysisService
+from codescope.domains.metrics.service import AnalysisService
 from codescope.infrastructure.github.client import GitHubClient
 from codescope.infrastructure.github.config import get_github_config
 from codescope.infrastructure.github.exceptions import GitHubAPIError, GitHubTransportError

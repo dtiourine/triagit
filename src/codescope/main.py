@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from codescope.domains.analysis.router import router as analysis_router
+from codescope.domains.metrics.router import router as metrics_router
 from codescope.infrastructure.github.exceptions import GitHubAPIError, GitHubTransportError
 from codescope.domains.web.router import router as web_router, templates
 
@@ -14,7 +14,7 @@ app = FastAPI()
 _web_static = Path(__file__).parent / "domains" / "web" / "static"
 app.mount("/static", StaticFiles(directory=_web_static), name="static")
 app.include_router(web_router)
-app.include_router(analysis_router, prefix="/api/v1")
+app.include_router(metrics_router, prefix="/api/v1")
 
 
 @app.exception_handler(StarletteHTTPException)

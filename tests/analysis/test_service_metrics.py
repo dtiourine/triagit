@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock
 
-from codescope.domains.analysis.schemas import GetRepoResponse, MetricsReport
-from codescope.domains.analysis.service import AnalysisService
+from codescope.domains.metrics.schemas import GetRepoResponse, MetricsReport
+from codescope.domains.metrics.service import AnalysisService
 from datetime import datetime, timezone
 
 

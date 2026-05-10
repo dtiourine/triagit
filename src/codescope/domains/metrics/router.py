@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from .dependencies import AnalysisServiceDep
 from .schemas import AnalysisRequest, MetricsReport
 
-router = APIRouter(prefix="/analysis", tags=["analysis"])
+router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 
 @router.post("/analyses", response_model=MetricsReport)
