@@ -396,42 +396,38 @@
         </header>
         <div class="cs-section-body">
           <div class="cs-rev-summary">
-            <div class="cs-rev-summary-l">
-              <div class="cs-rev-overall">
-                <div class="cs-rev-overall-num mono">{{ review.overall }}</div>
-                <div class="cs-rev-overall-tag">code review score</div>
+            <div class="cs-rev-summary-score">
+              <div class="cs-rev-overall-num mono">{{ review.overall }}</div>
+              <div class="cs-rev-overall-tag">code review score</div>
+            </div>
+            <div class="cs-rev-summary-sev">
+              {% for sev in ['critical', 'major', 'minor', 'info'] %}
+              {% set n = review.severityCounts.get(sev, 0) %}
+              {% if n > 0 %}
+              <div class="cs-rev-sev-row">
+                <span class="cs-sev-dot cs-sev-{{ sev }}" aria-hidden="true"></span>
+                <span class="cs-rev-sev-label">{{ sev | capitalize }}</span>
+                <span class="cs-rev-sev-count mono">{{ n }}</span>
+              </div>
+              {% endif %}
+              {% endfor %}
+              <div class="cs-rev-sev-row cs-rev-sev-total">
+                <span class="cs-rev-sev-label">Total</span>
+                <span class="cs-rev-sev-count mono">{{ review.findings | length }}</span>
               </div>
             </div>
-            <div class="cs-rev-summary-r">
-              <div class="cs-rev-meta">
-                <div class="cs-rev-meta-row">
-                  <span>Sampled</span>
-                  <span class="mono">{{ review.filesSampled }} of {{ review.filesTotal }} files</span>
-                </div>
-                <div class="cs-rev-meta-row">
-                  <span>Model</span>
-                  <span class="mono">{{ review.model }}</span>
-                </div>
-                <div class="cs-rev-meta-row">
-                  <span>Duration</span>
-                  <span class="mono">{{ review.durationSec }}s</span>
-                </div>
+            <div class="cs-rev-summary-meta">
+              <div class="cs-rev-meta-row">
+                <span>Sampled</span>
+                <span class="mono">{{ review.filesSampled }} of {{ review.filesTotal }} files</span>
               </div>
-              <div class="cs-rev-sevbar">
-                {% for sev in ['critical', 'major', 'minor', 'info'] %}
-                {% set n = review.severityCounts.get(sev, 0) %}
-                {% if n > 0 %}
-                <div class="cs-rev-sevbar-row cs-sev-{{ sev }}">
-                  <span class="cs-sev-dot cs-sev-{{ sev }}" aria-hidden="true"></span>
-                  <span class="cs-rev-sevbar-label">{{ sev | capitalize }}</span>
-                  <span class="cs-rev-sevbar-count mono">{{ n }}</span>
-                </div>
-                {% endif %}
-                {% endfor %}
-                <div class="cs-rev-sevbar-row cs-rev-sevbar-total">
-                  <span class="cs-rev-sevbar-label">Total findings</span>
-                  <span class="cs-rev-sevbar-count mono">{{ review.findings | length }}</span>
-                </div>
+              <div class="cs-rev-meta-row">
+                <span>Model</span>
+                <span class="mono">{{ review.model }}</span>
+              </div>
+              <div class="cs-rev-meta-row">
+                <span>Duration</span>
+                <span class="mono">{{ review.durationSec }}s</span>
               </div>
             </div>
           </div>
