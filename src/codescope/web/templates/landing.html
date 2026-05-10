@@ -16,7 +16,8 @@
     <p class="cs-landing-sub">Paste a public GitHub URL. Get a structured read on activity, hygiene, and contributor health.</p>
 
     <form class="cs-form" method="post" action="/analyze"
-          hx-post="/analyze" hx-target="body" hx-swap="outerHTML">
+          hx-post="/analyze" hx-target="body" hx-swap="outerHTML"
+          onsubmit="var i=document.getElementById('url-input'); i.value='https://github.com/'+i.value.replace(/^(https?:\/\/)?(www\.)?github\.com\//i,'')">
       <div class="cs-input-wrap" id="input-wrap">
         <span class="cs-input-prefix">https://github.com/</span>
         <input
