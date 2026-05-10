@@ -19,7 +19,21 @@
     </div>
   </div>
 
-  <div class="cs-report-inner">
+  <div class="cs-tabs-wrap">
+    <div class="cs-tabs">
+      <button class="cs-tab is-on" id="tab-health" onclick="switchTab('health', this)">
+        <span class="cs-tab-label">Health</span>
+        <span class="cs-tab-meta mono">{{ r.score }}</span>
+      </button>
+      <button class="cs-tab" id="tab-review" onclick="switchTab('review', this)">
+        <span class="cs-tab-label">LLM review</span>
+        <span class="cs-tab-meta mono"><span class="cs-tab-ai">AI</span></span>
+        <span class="cs-tab-badge mono">{{ review.findings | length }}</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="panel-health" class="cs-report-inner">
 
     {# ── 01 · Overview ──────────────────────────────────────────────── #}
     <section class="cs-section">
@@ -331,20 +345,6 @@
           </div>
         </div>
       </section>
-      <section class="cs-section is-placeholder">
-        <header class="cs-section-h">
-          <div class="cs-section-h-l">
-            <div class="cs-kicker mono">07 · code review</div>
-            <h2 class="cs-section-title">Code review signals</h2>
-          </div>
-        </header>
-        <div class="cs-section-body" style="padding: 0">
-          <div class="cs-placeholder">
-            <div class="cs-placeholder-tag mono">v2</div>
-            <div class="cs-placeholder-text">Code review insights arrive in v2.</div>
-          </div>
-        </div>
-      </section>
     </div>
 
     {# ── 08 · Languages ─────────────────────────────────────────────── #}
@@ -377,6 +377,300 @@
     </section>
     {% endif %}
 
-  </div>{# /cs-report-inner #}
+  </div>{# /panel-health #}
+
+  {# ── LLM review panel ────────────────────────────────────────────────── #}
+  <div id="panel-review" class="cs-report-inner" hidden>
+    <div class="cs-rev">
+
+      {# 01 · summary #}
+      <section class="cs-section">
+        <header class="cs-section-h">
+          <div class="cs-section-h-l">
+            <div class="cs-kicker mono">01 · summary</div>
+            <h2 class="cs-section-title">LLM code review</h2>
+          </div>
+          <div class="cs-section-aside">
+            <span class="mono cs-rev-aside">{{ review.model }} · {{ review.durationSec }}s</span>
+          </div>
+        </header>
+        <div class="cs-section-body">
+          <div class="cs-rev-summary">
+            <div class="cs-rev-summary-l">
+              <div class="cs-rev-overall">
+                <div class="cs-rev-overall-num mono">{{ review.overall }}</div>
+                <div class="cs-rev-overall-tag">code review score</div>
+              </div>
+            </div>
+            <div class="cs-rev-summary-r">
+              <div class="cs-rev-meta">
+                <div class="cs-rev-meta-row">
+                  <span>Sampled</span>
+                  <span class="mono">{{ review.filesSampled }} of {{ review.filesTotal }} files</span>
+                </div>
+                <div class="cs-rev-meta-row">
+                  <span>Model</span>
+                  <span class="mono">{{ review.model }}</span>
+                </div>
+                <div class="cs-rev-meta-row">
+                  <span>Duration</span>
+                  <span class="mono">{{ review.durationSec }}s</span>
+                </div>
+              </div>
+              <div class="cs-rev-sevbar">
+                {% for sev in ['critical', 'major', 'minor', 'info'] %}
+                {% set n = review.severityCounts.get(sev, 0) %}
+                {% if n > 0 %}
+                <div class="cs-rev-sevbar-row cs-sev-{{ sev }}">
+                  <span class="cs-sev-dot cs-sev-{{ sev }}" aria-hidden="true"></span>
+                  <span class="cs-rev-sevbar-label">{{ sev | capitalize }}</span>
+                  <span class="cs-rev-sevbar-count mono">{{ n }}</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+                <div class="cs-rev-sevbar-row cs-rev-sevbar-total">
+                  <span class="cs-rev-sevbar-label">Total findings</span>
+                  <span class="cs-rev-sevbar-count mono">{{ review.findings | length }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {# 02 · findings #}
+      <section class="cs-section">
+        <header class="cs-section-h">
+          <div class="cs-section-h-l">
+            <div class="cs-kicker mono">02 · findings</div>
+            <h2 class="cs-section-title">Findings</h2>
+          </div>
+          <div class="cs-section-aside">
+            <span class="mono" id="rev-finding-count">{{ review.findings | length }} of {{ review.findings | length }}</span>
+          </div>
+        </header>
+        <div class="cs-section-body">
+          <div class="cs-rev-filters">
+            <div class="cs-filter-row">
+              <span class="cs-filter-label">Severity</span>
+              <div class="cs-chips">
+                <button class="cs-chip is-on" data-filter="sev" data-value="__all__" onclick="toggleChip(this)">All</button>
+                {% for sev in ['critical', 'major', 'minor', 'info'] %}
+                {% set n = review.severityCounts.get(sev, 0) %}
+                {% if n > 0 %}
+                <button class="cs-chip cs-chip-sev cs-sev-{{ sev }}" data-filter="sev" data-value="{{ sev }}" onclick="toggleChip(this)">
+                  <span class="cs-sev-dot cs-sev-{{ sev }}" aria-hidden="true"></span>
+                  {{ sev | capitalize }}
+                  <span class="cs-chip-count mono">{{ n }}</span>
+                </button>
+                {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+            <div class="cs-filter-row">
+              <span class="cs-filter-label">Category</span>
+              <div class="cs-chips">
+                <button class="cs-chip is-on" data-filter="cat" data-value="__all__" onclick="toggleChip(this)">All</button>
+                {% for cat in review.categories %}
+                {% set n = review.findings | selectattr('category', 'equalto', cat) | list | length %}
+                {% if n > 0 %}
+                <button class="cs-chip" data-filter="cat" data-value="{{ cat }}" onclick="toggleChip(this)">
+                  {{ cat }}
+                  <span class="cs-chip-count mono">{{ n }}</span>
+                </button>
+                {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+            <div class="cs-filter-row" id="file-filter-row" hidden>
+              <span class="cs-filter-label">File</span>
+              <button class="cs-chip is-on" onclick="clearFileFilter()">
+                <span class="mono" id="file-filter-name"></span>
+                <span class="cs-chip-x">✕</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="cs-findings" id="findings-list">
+            {% for f in review.findings %}
+            <div class="cs-finding cs-sev-border-{{ f.severity }}"
+                 data-sev="{{ f.severity }}" data-cat="{{ f.category }}">
+              <header class="cs-finding-h" onclick="toggleFinding(this)">
+                <div class="cs-finding-h-l">
+                  <span class="cs-sev-tag cs-sev-{{ f.severity }}">
+                    <span class="cs-sev-dot cs-sev-{{ f.severity }}" aria-hidden="true"></span>
+                    {{ f.severity | capitalize }}
+                  </span>
+                  <span class="cs-finding-cat">{{ f.category }}</span>
+                </div>
+                <div class="cs-finding-h-r mono">
+                  <span class="cs-finding-conf">conf {{ (f.confidence * 100) | round | int }}%</span>
+                  <button class="cs-finding-toggle" aria-label="Collapse">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="transform:rotate(180deg)">
+                      <path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+              </header>
+              <div class="cs-finding-title">{{ f.title }}</div>
+              <div class="cs-finding-loc mono">
+                <span class="cs-finding-file">{{ f.file }}</span>
+                <span class="cs-finding-lines">
+                  {%- if f.lineStart == f.lineEnd -%}:{{ f.lineStart }}{%- else -%}:{{ f.lineStart }}–{{ f.lineEnd }}{%- endif -%}
+                </span>
+              </div>
+              <div class="cs-finding-body">
+                <p class="cs-finding-desc">{{ f.description }}</p>
+                {% if f.excerpt %}
+                <pre class="cs-finding-code mono">{% for l in f.excerpt %}<div class="cs-code-line {% if l.highlight %}is-hl{% endif %}"><span class="cs-code-num">{{ l.num }}</span><span class="cs-code-text">{{ l.text or ' ' }}</span></div>{% endfor %}</pre>
+                {% endif %}
+                {% if f.suggestion %}
+                <div class="cs-finding-fix">
+                  <div class="cs-finding-fix-label">Suggested fix</div>
+                  <div class="cs-finding-fix-text">{{ f.suggestion }}</div>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+            <div id="findings-empty" class="cs-findings-empty" hidden>No findings match these filters.</div>
+          </div>
+        </div>
+      </section>
+
+      {# 03 · files #}
+      <section class="cs-section">
+        <header class="cs-section-h">
+          <div class="cs-section-h-l">
+            <div class="cs-kicker mono">03 · files</div>
+            <h2 class="cs-section-title">Files sampled</h2>
+          </div>
+          <div class="cs-section-aside">
+            <span class="mono">{{ review.filesSampled }} of {{ review.filesTotal }}</span>
+          </div>
+        </header>
+        <div class="cs-section-body">
+          <div class="cs-files">
+            <div class="cs-files-h">
+              <div class="cs-files-h-note">{{ review.samplingNote }}</div>
+            </div>
+            <div class="cs-files-table">
+              <div class="cs-files-row cs-files-row-h mono">
+                <span>path</span><span>loc</span><span>findings</span><span>score</span>
+              </div>
+              {% for f in review.files %}
+              <button class="cs-files-row" onclick="filterByFile('{{ f.path }}')">
+                <span class="cs-files-path mono">{{ f.path }}</span>
+                <span class="cs-files-loc mono">{{ f.loc | fmt_number }}</span>
+                <span class="cs-files-findings mono">
+                  {% if f.findings == 0 %}
+                  <span class="cs-files-clean">clean</span>
+                  {% else %}
+                  <span class="cs-files-bad">{{ f.findings }}</span>
+                  {% endif %}
+                </span>
+                <span class="cs-files-score mono">
+                  <span class="cs-files-score-bar"><span style="width:{{ f.score }}%"></span></span>
+                  {{ f.score }}
+                </span>
+              </button>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="cs-rev-disclaimer">
+        <span class="mono">note</span>
+        LLM-generated review. Findings are advisory and may include false positives. Each finding shows model confidence; review changes before applying.
+      </div>
+
+    </div>{# /cs-rev #}
+  </div>{# /panel-review #}
+
 </div>{# /cs-report #}
+
+<script>
+(function () {
+  var activeSev = new Set();
+  var activeCat = new Set();
+  var fileFilter = null;
+  var totalFindings = {{ review.findings | length }};
+
+  function switchTab(name, btn) {
+    document.querySelectorAll('.cs-tab').forEach(function (t) { t.classList.remove('is-on'); });
+    btn.classList.add('is-on');
+    document.getElementById('panel-health').hidden = (name !== 'health');
+    document.getElementById('panel-review').hidden = (name !== 'review');
+  }
+  window.switchTab = switchTab;
+
+  function toggleFinding(header) {
+    var finding = header.closest('.cs-finding');
+    var body = finding.querySelector('.cs-finding-body');
+    var svg = finding.querySelector('.cs-finding-toggle svg');
+    var isOpen = !body.hidden;
+    body.hidden = isOpen;
+    svg.style.transform = isOpen ? '' : 'rotate(180deg)';
+    header.querySelector('.cs-finding-toggle').setAttribute('aria-label', isOpen ? 'Expand' : 'Collapse');
+  }
+  window.toggleFinding = toggleFinding;
+
+  function toggleChip(btn) {
+    var filter = btn.dataset.filter;
+    var value = btn.dataset.value;
+    var set = filter === 'sev' ? activeSev : activeCat;
+
+    if (value === '__all__') {
+      set.clear();
+      document.querySelectorAll('[data-filter="' + filter + '"]').forEach(function (b) { b.classList.remove('is-on'); });
+      btn.classList.add('is-on');
+    } else {
+      var allBtn = document.querySelector('[data-filter="' + filter + '"][data-value="__all__"]');
+      if (set.has(value)) { set.delete(value); btn.classList.remove('is-on'); }
+      else { set.add(value); btn.classList.add('is-on'); }
+      allBtn.classList.toggle('is-on', set.size === 0);
+    }
+    applyFilters();
+  }
+  window.toggleChip = toggleChip;
+
+  function filterByFile(path) {
+    fileFilter = (fileFilter === path) ? null : path;
+    var row = document.getElementById('file-filter-row');
+    var nameEl = document.getElementById('file-filter-name');
+    if (fileFilter) {
+      nameEl.textContent = fileFilter;
+      row.hidden = false;
+    } else {
+      row.hidden = true;
+    }
+    switchTab('review', document.getElementById('tab-review'));
+    applyFilters();
+  }
+  window.filterByFile = filterByFile;
+
+  function clearFileFilter() {
+    fileFilter = null;
+    document.getElementById('file-filter-row').hidden = true;
+    applyFilters();
+  }
+  window.clearFileFilter = clearFileFilter;
+
+  function applyFilters() {
+    var visible = 0;
+    document.querySelectorAll('#findings-list .cs-finding').forEach(function (el) {
+      var show = (activeSev.size === 0 || activeSev.has(el.dataset.sev)) &&
+                 (activeCat.size === 0 || activeCat.has(el.dataset.cat)) &&
+                 (!fileFilter || el.querySelector('.cs-finding-file').textContent === fileFilter);
+      el.hidden = !show;
+      if (show) visible++;
+    });
+    var countEl = document.getElementById('rev-finding-count');
+    if (countEl) countEl.textContent = visible + ' of ' + totalFindings;
+    var emptyEl = document.getElementById('findings-empty');
+    if (emptyEl) emptyEl.hidden = (visible > 0);
+  }
+}());
+</script>
 {% endblock %}
