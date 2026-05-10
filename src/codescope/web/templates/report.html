@@ -377,48 +377,6 @@
     </section>
     {% endif %}
 
-    {# ── Analyze another ────────────────────────────────────────────── #}
-    <section class="cs-section">
-      <header class="cs-section-h">
-        <div class="cs-section-h-l">
-          <div class="cs-kicker mono">09 · share</div>
-        </div>
-      </header>
-      <div class="cs-section-body">
-        <div class="cs-perm">
-          <div class="cs-perm-l">
-            <div class="cs-perm-label">Analyzed repository</div>
-            <div class="cs-perm-url-wrap">
-              <code class="cs-perm-url mono" id="repo-url">https://github.com/{{ r.slug }}</code>
-              <button class="cs-btn cs-btn-ghost" onclick="copyUrl()" id="copy-btn">
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
-                  <rect x="3.5" y="3.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
-                  <path d="M3 8.5V2.5A1.5 1.5 0 014.5 1H8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                </svg>
-                Copy
-              </button>
-            </div>
-          </div>
-          <a href="/" class="cs-btn cs-btn-secondary">
-            Analyze another repo
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M3 7h8m0 0L7.5 3.5M11 7l-3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-        </div>
-      </div>
-    </section>
-
   </div>{# /cs-report-inner #}
 </div>{# /cs-report #}
-
-<script>
-function copyUrl() {
-  const url = document.getElementById('repo-url').textContent;
-  navigator.clipboard?.writeText(url);
-  const btn = document.getElementById('copy-btn');
-  btn.textContent = 'Copied';
-  setTimeout(() => { btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.2"/><path d="M3 8.5V2.5A1.5 1.5 0 014.5 1H8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg> Copy'; }, 1400);
-}
-</script>
 {% endblock %}
