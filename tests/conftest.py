@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 from types import SimpleNamespace
 import pytest
 
-from codescope.github.schemas import (
+from codescope.infrastructure.github.schemas import (
     Commit,
     CommitDetail,
     Contributor,

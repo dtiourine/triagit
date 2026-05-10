@@ -3,10 +3,10 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from codescope.analysis.service import AnalysisService
-from codescope.github.client import GitHubClient
-from codescope.github.config import get_github_config
-from codescope.github.exceptions import GitHubAPIError, GitHubTransportError
+from codescope.domains.analysis.service import AnalysisService
+from codescope.infrastructure.github.client import GitHubClient
+from codescope.infrastructure.github.config import get_github_config
+from codescope.infrastructure.github.exceptions import GitHubAPIError, GitHubTransportError
 
 router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")

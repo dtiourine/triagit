@@ -2,8 +2,8 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
-from codescope.github.client import GitHubClient
-from codescope.github.schemas import RepoInfo
+from codescope.infrastructure.github.client import GitHubClient
+from codescope.infrastructure.github.schemas import RepoInfo
 
 from .schemas import ContributorResponse, GetRepoResponse, HygieneCheck, MetricsReport
 

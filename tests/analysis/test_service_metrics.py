@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock
 
-from codescope.analysis.schemas import GetRepoResponse, MetricsReport
-from codescope.analysis.service import AnalysisService
+from codescope.domains.analysis.schemas import GetRepoResponse, MetricsReport
+from codescope.domains.analysis.service import AnalysisService
 from datetime import datetime, timezone
 
 
@@ -103,7 +103,7 @@ async def test_pr_counts(raw_analysis):
 
 
 async def test_size_fmt_mb(raw_analysis):
-    from codescope.github.schemas import RepoInfo
+    from codescope.infrastructure.github.schemas import RepoInfo
     raw_analysis.repo = raw_analysis.repo.model_copy(update={"size": 1025})
     service = _make_service(raw_analysis)
     result = await service.get_metrics_report("https://github.com/owner/repo")
@@ -111,7 +111,7 @@ async def test_size_fmt_mb(raw_analysis):
 
 
 async def test_top_contributors_excludes_bots(raw_analysis):
-    from codescope.github.schemas import Contributor
+    from codescope.infrastructure.github.schemas import Contributor
     raw_analysis.contributors.append(
         Contributor(login="dependabot[bot]", contributions=999, type="Bot")
     )
