@@ -42,6 +42,8 @@ class GetRepoResponse(BaseModel):
     language: str | None
     archived: bool
     disabled: bool
+    stars: int = 0
+    forks: int = 0
 
 
 class CommitResponse(BaseModel):
@@ -95,11 +97,36 @@ class AnalysisRequest(BaseModel):
     repo_url: GitHubRepoUrl
 
 
-class AnalysisResponse(BaseModel):
+class HygieneCheck(BaseModel):
+    ok: bool
+    label: str
+    note: str | None = None
+
+
+class MetricsReport(BaseModel):
+    # Repo identity
+    slug: str
     repo: GetRepoResponse
-    commits: list[CommitResponse]
-    contributors: list[ContributorResponse]
-    issues: list[IssueResponse]
-    pulls: list[PullRequestResponse]
-    tree: list[TreeEntryResponse]
-    languages: LanguageBreakdownResponse
+    size_fmt: str
+    # Health
+    score: int
+    score_label: str
+    score_summary: str
+    breakdown: dict[str, int]
+    # Activity
+    commits_90d: int
+    unique_authors: int
+    days_since_last: int
+    bus_factor_pct: int
+    per_week: list[int]
+    top_contributors: list[ContributorResponse]
+    # Issues / PRs
+    open_issues: int
+    closed_issues: int
+    open_prs: int
+    closed_prs: int
+    # Hygiene
+    hygiene: list[HygieneCheck]
+    hygiene_passed: int
+    # Languages
+    language_pcts: dict[str, int]

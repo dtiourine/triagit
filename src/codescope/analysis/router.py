@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends
 from .dependencies import AnalysisServiceDep
 from .schemas import (
     AnalysisRequest,
-    AnalysisResponse,
     CommitResponse,
     ContributorResponse,
     FileContentResponse,
@@ -17,6 +16,7 @@ from .schemas import (
     ListCommitsRequest,
     ListIssuesRequest,
     ListPullsRequest,
+    MetricsReport,
     PullRequestResponse,
     RepoRequest,
     TreeEntryResponse,
@@ -89,9 +89,9 @@ async def get_languages(
     return await service.get_languages(params.url)
 
 
-@router.post("/analyses", response_model=AnalysisResponse)
+@router.post("/analyses", response_model=MetricsReport)
 async def analyze(
     body: AnalysisRequest,
     service: AnalysisServiceDep,
-) -> AnalysisResponse:
-    return await service.fetch_full_report(body.repo_url)
+) -> MetricsReport:
+    return await service.get_metrics_report(body.repo_url)
