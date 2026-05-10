@@ -17,6 +17,7 @@ from .schemas import (
     Contributor,
     FileContent,
     Issue,
+    IssueSearchResult,
     LanguageBreakdown,
     PullRequest,
     RepoInfo,
@@ -120,6 +121,16 @@ class GitHubClient:
             {"state": state, "per_page": 100},
         )
         return [PullRequest.model_validate(item) for item in data]
+
+    async def count_issues(
+        self, repo_owner: str, repo_name: str, is_pr: bool, state: str
+    ) -> int:
+        kind = "pr" if is_pr else "issue"
+        data = await self._get(
+            "/search/issues",
+            {"q": f"repo:{repo_owner}/{repo_name} is:{kind} is:{state}", "per_page": 1},
+        )
+        return IssueSearchResult.model_validate(data).total_count
 
     async def get_tree(self, repo_owner: str, repo_name: str, tree_sha: str) -> RepoTree:
         data = await self._get(

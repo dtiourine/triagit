@@ -111,14 +111,21 @@ class AnalysisService:
         now = datetime.now(timezone.utc)
         since = now - timedelta(days=90)
 
+        owner, repo_name = self._parse_repo_url(url)
         repo = await self.get_repo(url)
-        commits, contributors, issues, pulls, tree, languages = await asyncio.gather(
-            self.list_commits(url, since=since),
-            self.list_contributors(url),
-            self.list_issues(url),
-            self.list_pulls(url),
-            self.get_tree(url, repo.default_branch),
-            self.get_languages(url),
+        (commits, contributors, tree, languages), (open_issues, closed_issues, open_prs, closed_prs) = await asyncio.gather(
+            asyncio.gather(
+                self.list_commits(url, since=since),
+                self.list_contributors(url),
+                self.get_tree(url, repo.default_branch),
+                self.get_languages(url),
+            ),
+            asyncio.gather(
+                self.github.count_issues(owner, repo_name, is_pr=False, state="open"),
+                self.github.count_issues(owner, repo_name, is_pr=False, state="closed"),
+                self.github.count_issues(owner, repo_name, is_pr=True,  state="open"),
+                self.github.count_issues(owner, repo_name, is_pr=True,  state="closed"),
+            ),
         )
 
         # Commit activity
@@ -142,13 +149,6 @@ class AnalysisService:
         total_contrib = sum(c.contributions for c in contributors)
         top3 = sum(c.contributions for c in sorted(contributors, key=lambda c: -c.contributions)[:3])
         bus_factor_pct = round(top3 / total_contrib * 100) if total_contrib else 0
-
-        # Issues / PRs
-        real_issues = [i for i in issues if not i.is_pull_request]
-        open_issues = sum(1 for i in real_issues if i.state == "open")
-        closed_issues = sum(1 for i in real_issues if i.state == "closed")
-        open_prs = sum(1 for p in pulls if p.state == "open")
-        closed_prs = sum(1 for p in pulls if p.state == "closed")
 
         # Hygiene
         tree_paths = {e.path for e in tree}

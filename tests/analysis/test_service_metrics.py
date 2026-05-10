@@ -52,13 +52,19 @@ from codescope.analysis.schemas import MetricsReport
 
 
 def _make_service(raw_analysis) -> AnalysisService:
+    real_issues = [i for i in raw_analysis.issues if not i.is_pull_request]
+
+    async def _count_issues(owner, repo, is_pr, state):
+        if not is_pr:
+            return sum(1 for i in real_issues if i.state == state)
+        return sum(1 for p in raw_analysis.pulls if p.state == state)
+
     mock_github = AsyncMock()
+    mock_github.count_issues.side_effect = _count_issues
     service = AnalysisService(mock_github)
     service.get_repo = AsyncMock(return_value=raw_analysis.repo)
     service.list_commits = AsyncMock(return_value=raw_analysis.commits)
     service.list_contributors = AsyncMock(return_value=raw_analysis.contributors)
-    service.list_issues = AsyncMock(return_value=raw_analysis.issues)
-    service.list_pulls = AsyncMock(return_value=raw_analysis.pulls)
     service.get_tree = AsyncMock(return_value=raw_analysis.tree)
     service.get_languages = AsyncMock(return_value=raw_analysis.languages)
     return service

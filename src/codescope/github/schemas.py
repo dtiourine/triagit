@@ -157,6 +157,11 @@ class FileContent(GitHubModel):
         return base64.b64decode(self.content)
 
 
+# ---- search ----
+class IssueSearchResult(GitHubModel):
+    total_count: int
+
+
 # ---- get_languages ----
 class LanguageBreakdown(GitHubModel):
     bytes_per_language: dict[str, int]
