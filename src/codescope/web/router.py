@@ -65,7 +65,6 @@ async def analyze(request: Request, url: str = Form(...)):
             request,
             "landing.html",
             {"error": "Enter a github.com/owner/repo URL."},
-            status_code=422,
         )
 
     slug = f"{path_parts[0]}/{path_parts[1]}"
