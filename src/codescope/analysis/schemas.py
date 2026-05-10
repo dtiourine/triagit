@@ -111,7 +111,6 @@ class MetricsReport(BaseModel):
     # Health
     score: int
     score_label: str
-    score_summary: str
     breakdown: dict[str, int]
     # Activity
     commits_90d: int

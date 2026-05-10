@@ -211,8 +211,6 @@ class AnalysisService:
         else:
             score_label = "Critical"
 
-        score_summary = _score_summary(score, repo.full_name)
-
         size_kb = repo.size
         if size_kb < 1024:
             size_fmt = f"{size_kb} KB"
@@ -227,7 +225,6 @@ class AnalysisService:
             size_fmt=size_fmt,
             score=score,
             score_label=score_label,
-            score_summary=score_summary,
             breakdown={
                 "Activity":     activity_score,
                 "Issues / PRs": issues_score,
@@ -269,13 +266,3 @@ def _hygiene(paths: set[str]) -> list[HygieneCheck]:
     ]
 
 
-def _score_summary(score: int, name: str) -> str:
-    if score >= 90:
-        return f"{name} is actively maintained with strong contributor diversity and good hygiene."
-    if score >= 75:
-        return f"{name} is healthy with regular activity and reasonable project hygiene."
-    if score >= 55:
-        return f"{name} shows moderate activity. Some hygiene or contributor diversity improvements could help."
-    if score >= 35:
-        return f"{name} shows signs of reduced activity or hygiene gaps that may need attention."
-    return f"{name} appears to have low activity or significant maintenance concerns."
