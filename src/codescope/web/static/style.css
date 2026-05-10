@@ -168,11 +168,12 @@ button { font-family: inherit; }
 
 .cs-input-prefix {
   display: inline-flex; align-items: center;
-  padding: 0 4px 0 16px;
+  padding: 0 0 0 16px;
   font-family: var(--font-mono);
-  font-size: 13.5px;
-  color: var(--muted-2);
+  font-size: 14px;
+  color: var(--ink-2);
   user-select: none;
+  cursor: default;
 }
 .cs-input {
   flex: 1; min-width: 0;
@@ -180,7 +181,7 @@ button { font-family: inherit; }
   background: transparent;
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 14.5px;
+  font-size: 14px;
   padding: 0 12px 0 0;
 }
 .cs-input::placeholder { color: var(--muted-2); }
