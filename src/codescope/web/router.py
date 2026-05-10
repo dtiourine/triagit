@@ -1,3 +1,4 @@
+from pathlib import Path
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -8,7 +9,7 @@ from codescope.github.config import get_github_config
 from codescope.github.exceptions import GitHubAPIError, GitHubTransportError
 
 router = APIRouter(tags=["web"])
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 _LANG_COLORS: dict[str, str] = {
     "Python": "#3572A5",

@@ -1,3 +1,4 @@
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -9,7 +10,8 @@ from codescope.web.router import router as web_router
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+_web_static = Path(__file__).parent / "web" / "static"
+app.mount("/static", StaticFiles(directory=_web_static), name="static")
 app.include_router(web_router)
 app.include_router(analysis_router, prefix="/api/v1")
 
