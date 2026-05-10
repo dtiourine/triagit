@@ -20,4 +20,11 @@ class OpenAILLMClient:
             messages=[{"role": "user", "content": prompt}],
             response_format=schema,
         )
-        return response.choices[0].message.parsed
+        if not response.choices:
+            raise ValueError("OpenAI returned no choices")
+        message = response.choices[0].message
+        if message.refusal:
+            raise ValueError(f"OpenAI refused the request: {message.refusal}")
+        if message.parsed is None:
+            raise ValueError("OpenAI returned no parsed output")
+        return message.parsed
