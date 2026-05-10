@@ -28,6 +28,7 @@
           autocorrect="off"
           autocapitalize="off"
           placeholder="github.com/owner/repo"
+          oninput="this.value = this.value.replace(/^https?:\/\//i, '')"
           autofocus
           required
         />
