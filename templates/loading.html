@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Analyzing {{ slug }} — codescope{% endblock %}
+
+{% block content %}
+<!-- Fire the real API call immediately; loading animation runs while we wait -->
+<div hx-get="/report?url={{ url | urlencode }}"
+     hx-trigger="load"
+     hx-target="body"
+     hx-swap="outerHTML">
+</div>
+
+<div class="cs-loading">
+  <div class="cs-loading-card">
+    <div class="cs-loading-head">
+      <div class="cs-loading-target">
+        <span class="cs-loading-spin" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 14 14">
+            <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-opacity=".18" stroke-width="1.4" fill="none"/>
+            <path d="M12 7a5 5 0 00-5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+          </svg>
+        </span>
+        <span class="mono">{{ slug }}</span>
+      </div>
+      <a href="/" class="cs-btn cs-btn-ghost">Cancel</a>
+    </div>
+
+    <ol class="cs-stages" id="stages-list">
+      {% set stages = [
+        "Resolving repository…",
+        "Fetching repository metadata…",
+        "Analyzing commit activity…",
+        "Reading file tree…",
+        "Counting issues and pull requests…",
+        "Inspecting hygiene signals…",
+        "Computing health score…"
+      ] %}
+      {% for stage in stages %}
+      <li class="cs-stage {% if loop.first %}cs-stage-active{% else %}cs-stage-pending{% endif %}"
+          data-index="{{ loop.index0 }}">
+        <span class="cs-stage-mark" aria-hidden="true">
+          {% if loop.first %}
+          <svg class="cs-spin" width="12" height="12" viewBox="0 0 14 14">
+            <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-opacity=".18" stroke-width="1.4" fill="none"/>
+            <path d="M12 7a5 5 0 00-5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+          </svg>
+          {% else %}
+          <svg width="6" height="6" viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" fill="currentColor"/></svg>
+          {% endif %}
+        </span>
+        <span class="cs-stage-label">{{ stage }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+
+    <div class="cs-progress" aria-hidden="true">
+      <div class="cs-progress-fill" id="progress-fill" style="width: 14%"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const stages = document.querySelectorAll('.cs-stage');
+  const fill = document.getElementById('progress-fill');
+  const total = stages.length;
+  let current = 0;
+
+  const checkSvg = `<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 7.4L5.8 10 11 4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const spinSvg = `<svg class="cs-spin" width="12" height="12" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-opacity=".18" stroke-width="1.4" fill="none"/><path d="M12 7a5 5 0 00-5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>`;
+  const dotSvg = `<svg width="6" height="6" viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" fill="currentColor"/></svg>`;
+
+  function advance() {
+    if (current >= total - 1) return;
+    stages[current].className = 'cs-stage cs-stage-done';
+    stages[current].querySelector('.cs-stage-mark').innerHTML = checkSvg;
+    current++;
+    stages[current].className = 'cs-stage cs-stage-active';
+    stages[current].querySelector('.cs-stage-mark').innerHTML = spinSvg;
+    fill.style.width = ((current + 1) / total * 100) + '%';
+  }
+
+  const interval = setInterval(advance, 3200 / total);
+
+  // Stop animation once HTMX swaps the page
+  document.body.addEventListener('htmx:beforeSwap', function () {
+    clearInterval(interval);
+  });
+})();
+</script>
+{% endblock %}

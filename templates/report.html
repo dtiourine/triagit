@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+{% block title %}{{ r.slug }} — codescope{% endblock %}
+
+{% block content %}
+{# ── Sticky top bar ─────────────────────────────────────────────────── #}
+<div class="cs-report">
+  <div class="cs-report-bar">
+    <div class="cs-report-bar-l">
+      <a href="/" class="cs-back" aria-label="Back">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M8.5 3L4.5 7l4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+      <span class="mono cs-report-bar-slug">{{ r.slug }}</span>
+      <span class="cs-report-bar-tag">report · {{ r.score_label | lower }}</span>
+    </div>
+    <div class="cs-report-bar-r mono">
+      <span>analyzed just now</span>
+    </div>
+  </div>
+
+  <div class="cs-report-inner">
+
+    {# ── 01 · Overview ──────────────────────────────────────────────── #}
+    <section class="cs-section">
+      <header class="cs-section-h">
+        <div class="cs-section-h-l">
+          <div class="cs-kicker mono">01 · overview</div>
+        </div>
+      </header>
+      <div class="cs-section-body">
+        <div class="cs-rh">
+          <div class="cs-rh-l">
+            <div class="cs-rh-title">
+              <a class="cs-rh-name mono"
+                 href="https://github.com/{{ r.slug }}"
+                 target="_blank" rel="noreferrer">
+                {{ r.slug }}
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+                  <path d="M4 2H2v7h7V7M6 2h3v3M5 6l4-4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </a>
+            </div>
+            {% if r.repo.description %}
+            <p class="cs-rh-desc">{{ r.repo.description }}</p>
+            {% endif %}
+            <div class="cs-rh-badges">
+              {% if r.repo.language %}
+              <span class="cs-badge">
+                <span class="cs-lang-dot" style="background: {{ lang_color(r.repo.language) }}"></span>
+                {{ r.repo.language }}
+              </span>
+              {% endif %}
+              <span class="cs-badge cs-badge-muted mono">{{ r.repo.default_branch }}</span>
+              <span class="cs-badge cs-badge-muted">{{ r.size_fmt }}</span>
+              {% if r.repo.archived %}
+              <span class="cs-badge cs-badge-warn">archived</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="cs-rh-r">
+            <div class="cs-rh-meta">
+              <div>
+                <span class="cs-rh-meta-k">stars</span>
+                <span class="cs-rh-meta-v mono">{{ r.repo.stars | fmt_number }}</span>
+              </div>
+              <div>
+                <span class="cs-rh-meta-k">forks</span>
+                <span class="cs-rh-meta-v mono">{{ r.repo.forks | fmt_number }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {# ── 02 · Health ────────────────────────────────────────────────── #}
+    <section class="cs-section">
+      <header class="cs-section-h">
+        <div class="cs-section-h-l">
+          <div class="cs-kicker mono">02 · health</div>
+          <h2 class="cs-section-title">Repo health</h2>
+        </div>
+      </header>
+      <div class="cs-section-body">
+        <div class="cs-health">
+          <div class="cs-health-l">
+            <div class="cs-score">
+              <span class="cs-score-num">{{ r.score }}</span>
+              <span class="cs-score-denom mono">/100</span>
+            </div>
+            <div class="cs-score-tag">{{ r.score_label }}</div>
+            <p class="cs-score-summary">{{ r.score_summary }}</p>
+          </div>
+          <div class="cs-health-r">
+            <div class="cs-breakdown">
+              {% for label, val in r.breakdown.items() %}
+              <div class="cs-breakdown-row">
+                <div class="cs-breakdown-label">
+                  <span>{{ label }}</span>
+                  <span class="mono cs-breakdown-val">{{ val }}</span>
+                </div>
+                <div class="cs-bar-track">
+                  <div class="cs-bar-fill" style="width: {{ val }}%"></div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {# ── 03 · Activity ──────────────────────────────────────────────── #}
+    <section class="cs-section">
+      <header class="cs-section-h">
+        <div class="cs-section-h-l">
+          <div class="cs-kicker mono">03 · activity</div>
+          <h2 class="cs-section-title">Activity</h2>
+        </div>
+      </header>
+      <div class="cs-section-body">
+        <div class="cs-activity">
+
+          {# Stat tiles #}
+          <div class="cs-stats-row">
+            <div class="cs-stat">
+              <div class="cs-stat-label">Commits, last 90 days</div>
+              <div class="cs-stat-value">
+                <span class="cs-stat-num">{{ r.commits_90d | fmt_number }}</span>
+              </div>
+            </div>
+            <div class="cs-stat">
+              <div class="cs-stat-label">Unique authors</div>
+              <div class="cs-stat-value">
+                <span class="cs-stat-num">{{ r.unique_authors }}</span>
+              </div>
+            </div>
+            <div class="cs-stat">
+              <div class="cs-stat-label">Days since last commit</div>
+              <div class="cs-stat-value">
+                <span class="cs-stat-num">{{ r.days_since_last }}</span>
+              </div>
+            </div>
+            <div class="cs-stat">
+              <div class="cs-stat-label">Bus factor (top 3)</div>
+              <div class="cs-stat-value">
+                <span class="cs-stat-num">{{ r.bus_factor_pct }}</span>
+                <span class="cs-stat-suffix">%</span>
+              </div>
+              <div class="cs-stat-hint">of total contributions</div>
+            </div>
+          </div>
+
+          {# Weekly commit chart #}
+          {% set max_week = r.per_week | max %}
+          <div class="cs-chart">
+            <div class="cs-chart-h">
+              <span class="cs-chart-title">Commits per week · last 13 weeks</span>
+              <span class="mono cs-chart-max">peak {{ max_week }}</span>
+            </div>
+            <div class="cs-chart-bars">
+              {% for count in r.per_week %}
+              {% set h = [4, ((count / max_week * 100) | round | int)] | max if max_week > 0 else 4 %}
+              {% set recent = loop.index > (r.per_week | length) - 4 %}
+              <div class="cs-chart-col">
+                <div class="cs-chart-bar-wrap">
+                  <span class="cs-chart-bar"
+                        style="height: {{ h }}%; opacity: {{ '1' if recent else '0.55' }}"></span>
+                  <span class="cs-chart-tooltip mono">{{ count }}</span>
+                </div>
+                <span class="cs-chart-tick mono">
+                  {%- if loop.last -%}now{%- else -%}w{{ loop.index - 13 }}{%- endif -%}
+                </span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          {# Top contributors #}
+          {% if r.top_contributors %}
+          <div class="cs-contribs">
+            <div class="cs-contribs-h">Top recent contributors</div>
+            <ul class="cs-contribs-list">
+              {% set max_contrib = r.top_contributors[0].contributions %}
+              {% for c in r.top_contributors %}
+              {% set pct = (c.contributions / max_contrib * 100) | round | int %}
+              <li class="cs-contrib">
+                <span class="cs-contrib-rank mono">{{ "%02d" % loop.index }}</span>
+                <span class="cs-contrib-login mono">{{ c.login }}</span>
+                <span class="cs-contrib-bar">
+                  <span style="width: {{ pct }}%"></span>
+                </span>
+                <span class="cs-contrib-count mono">{{ c.contributions | fmt_number }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+    </section>
+
+    {# ── 04 · Issues & PRs ──────────────────────────────────────────── #}
+    <section class="cs-section">
+      <header class="cs-section-h">
+        <div class="cs-section-h-l">
+          <div class="cs-kicker mono">04 · issues &amp; prs</div>
+          <h2 class="cs-section-title">Issues &amp; pull requests</h2>
+        </div>
+      </header>
+      <div class="cs-section-body">
+        <div class="cs-iprs">
+
+          {# Issues #}
+          <div class="cs-ipr">
+            <div class="cs-ipr-h">Issues</div>
+            <div class="cs-ipr-stats">
+              <div>
+                <span class="cs-ipr-num mono">{{ r.open_issues | fmt_number }}</span>
+                <span class="cs-ipr-k">open</span>
+              </div>
+              <div>
+                <span class="cs-ipr-num mono">{{ r.closed_issues | fmt_number }}</span>
+                <span class="cs-ipr-k">closed</span>
+              </div>
+            </div>
+            {% set i_total = r.open_issues + r.closed_issues %}
+            {% if i_total > 0 %}
+            {% set i_open_pct = (r.open_issues / i_total * 100) | round | int %}
+            <div class="cs-prop">
+              <div class="cs-prop-track">
+                <span class="cs-prop-open" style="width: {{ i_open_pct }}%"></span>
+                <span class="cs-prop-closed" style="width: {{ 100 - i_open_pct }}%"></span>
+              </div>
+              <div class="cs-prop-legend mono">
+                <span><i class="cs-dot cs-dot-open"></i> open {{ r.open_issues | fmt_number }}</span>
+                <span><i class="cs-dot cs-dot-closed"></i> closed {{ r.closed_issues | fmt_number }}</span>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+
+          {# PRs #}
+          <div class="cs-ipr">
+            <div class="cs-ipr-h">Pull requests</div>
+            <div class="cs-ipr-stats">
+              <div>
+                <span class="cs-ipr-num mono">{{ r.open_prs | fmt_number }}</span>
+                <span class="cs-ipr-k">open</span>
+              </div>
+              <div>
+                <span class="cs-ipr-num mono">{{ r.closed_prs | fmt_number }}</span>
+                <span class="cs-ipr-k">closed</span>
+              </div>
+            </div>
+            {% set pr_total = r.open_prs + r.closed_prs %}
+            {% if pr_total > 0 %}
+            {% set pr_open_pct = (r.open_prs / pr_total * 100) | round | int %}
+            <div class="cs-prop">
+              <div class="cs-prop-track">
+                <span class="cs-prop-open" style="width: {{ pr_open_pct }}%"></span>
+                <span class="cs-prop-closed" style="width: {{ 100 - pr_open_pct }}%"></span>
+              </div>
+              <div class="cs-prop-legend mono">
+                <span><i class="cs-dot cs-dot-open"></i> open {{ r.open_prs | fmt_number }}</span>
+                <span><i class="cs-dot cs-dot-closed"></i> closed {{ r.closed_prs | fmt_number }}</span>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    {# ── 05 · Hygiene ───────────────────────────────────────────────── #}
+    <section class="cs-section">
+      <header class="cs-section-h">
+        <div class="cs-section-h-l">
+          <div class="cs-kicker mono">05 · hygiene</div>
+          <h2 class="cs-section-title">Hygiene checklist</h2>
+        </div>
+      </header>
+      <div class="cs-section-body">
+        <div class="cs-hygiene">
+          <ul class="cs-checklist">
+            {% for h in r.hygiene %}
+            <li class="cs-check cs-check-{{ 'ok' if h.ok else 'no' }}">
+              <span class="cs-check-mark" aria-hidden="true">
+                {% if h.ok %}
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M3 7.4L5.8 10 11 4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                {% else %}
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M4 4l6 6M10 4l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+                {% endif %}
+              </span>
+              <span class="cs-check-label">{{ h.label }}</span>
+              {% if h.note %}
+              <span class="cs-check-note mono">{{ h.note }}</span>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+          <div class="cs-hygiene-score">
+            <div class="cs-hygiene-score-num mono">
+              {{ r.hygiene_passed }} <span class="cs-hygiene-score-of">/ {{ r.hygiene | length }}</span>
+            </div>
+            <div class="cs-hygiene-score-label">checks passed</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {# ── 06 & 07 · Placeholder sections ─────────────────────────────── #}
+    <div class="cs-section-grid">
+      <section class="cs-section is-placeholder">
+        <header class="cs-section-h">
+          <div class="cs-section-h-l">
+            <div class="cs-kicker mono">06 · dependencies</div>
+            <h2 class="cs-section-title">Dependency health</h2>
+          </div>
+        </header>
+        <div class="cs-section-body" style="padding: 0">
+          <div class="cs-placeholder">
+            <div class="cs-placeholder-tag mono">v2</div>
+            <div class="cs-placeholder-text">Dependency analysis arrives in v2.</div>
+          </div>
+        </div>
+      </section>
+      <section class="cs-section is-placeholder">
+        <header class="cs-section-h">
+          <div class="cs-section-h-l">
+            <div class="cs-kicker mono">07 · code review</div>
+            <h2 class="cs-section-title">Code review signals</h2>
+          </div>
+        </header>
+        <div class="cs-section-body" style="padding: 0">
+          <div class="cs-placeholder">
+            <div class="cs-placeholder-tag mono">v2</div>
+            <div class="cs-placeholder-text">Code review insights arrive in v2.</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    {# ── 08 · Languages ─────────────────────────────────────────────── #}
+    {% if r.language_pcts %}
+    <section class="cs-section">
+      <header class="cs-section-h">
+        <div class="cs-section-h-l">
+          <div class="cs-kicker mono">08 · languages</div>
+          <h2 class="cs-section-title">Language breakdown</h2>
+        </div>
+      </header>
+      <div class="cs-section-body">
+        <div class="cs-breakdown">
+          {% for lang, pct in r.language_pcts.items() %}
+          <div class="cs-breakdown-row">
+            <div class="cs-breakdown-label">
+              <span style="display:inline-flex;align-items:center;gap:8px">
+                <span class="cs-lang-dot" style="background:{{ lang_color(lang) }}"></span>
+                {{ lang }}
+              </span>
+              <span class="mono cs-breakdown-val">{{ pct }}%</span>
+            </div>
+            <div class="cs-bar-track">
+              <div class="cs-bar-fill" style="width:{{ pct }}%; background:{{ lang_color(lang) }}"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    {# ── Analyze another ────────────────────────────────────────────── #}
+    <section class="cs-section">
+      <header class="cs-section-h">
+        <div class="cs-section-h-l">
+          <div class="cs-kicker mono">09 · share</div>
+        </div>
+      </header>
+      <div class="cs-section-body">
+        <div class="cs-perm">
+          <div class="cs-perm-l">
+            <div class="cs-perm-label">Analyzed repository</div>
+            <div class="cs-perm-url-wrap">
+              <code class="cs-perm-url mono" id="repo-url">https://github.com/{{ r.slug }}</code>
+              <button class="cs-btn cs-btn-ghost" onclick="copyUrl()" id="copy-btn">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+                  <rect x="3.5" y="3.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
+                  <path d="M3 8.5V2.5A1.5 1.5 0 014.5 1H8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                </svg>
+                Copy
+              </button>
+            </div>
+          </div>
+          <a href="/" class="cs-btn cs-btn-secondary">
+            Analyze another repo
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M3 7h8m0 0L7.5 3.5M11 7l-3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </div>{# /cs-report-inner #}
+</div>{# /cs-report #}
+
+<script>
+function copyUrl() {
+  const url = document.getElementById('repo-url').textContent;
+  navigator.clipboard?.writeText(url);
+  const btn = document.getElementById('copy-btn');
+  btn.textContent = 'Copied';
+  setTimeout(() => { btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.2"/><path d="M3 8.5V2.5A1.5 1.5 0 014.5 1H8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg> Copy'; }, 1400);
+}
+</script>
+{% endblock %}

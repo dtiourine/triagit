@@ -1,12 +1,16 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from codescope.analysis.router import router as analysis_router
 from codescope.github.exceptions import GitHubAPIError, GitHubTransportError
+from codescope.web.router import router as web_router
 
 app = FastAPI()
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.include_router(web_router)
 app.include_router(analysis_router, prefix="/api/v1")
 
 
