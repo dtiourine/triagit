@@ -25,6 +25,8 @@ class RepoInfo(GitHubModel):
     archived: bool
     disabled: bool
     license: License | None
+    stargazers_count: int = 0
+    forks_count: int = 0
 
 
 # ---- list_commits ----

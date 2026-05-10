@@ -5,13 +5,14 @@ from urllib.parse import urlparse
 from codescope.github.client import GitHubClient
 
 from .schemas import (
-    AnalysisResponse,
     CommitResponse,
     ContributorResponse,
     FileContentResponse,
     GetRepoResponse,
+    HygieneCheck,
     IssueResponse,
     LanguageBreakdownResponse,
+    MetricsReport,
     PullRequestResponse,
     TreeEntryResponse,
 )
@@ -28,7 +29,18 @@ class AnalysisService:
     async def get_repo(self, url: str) -> GetRepoResponse:
         owner, repo = self._parse_repo_url(url)
         data = await self.github.get_repo(owner, repo)
-        return GetRepoResponse.model_validate(data.model_dump())
+        return GetRepoResponse(
+            full_name=data.full_name,
+            description=data.description,
+            default_branch=data.default_branch,
+            pushed_at=data.pushed_at,
+            size=data.size,
+            language=data.language,
+            archived=data.archived,
+            disabled=data.disabled,
+            stars=data.stargazers_count,
+            forks=data.forks_count,
+        )
 
     async def list_commits(self, url: str, since: datetime | None = None) -> list[CommitResponse]:
         owner, repo = self._parse_repo_url(url)
@@ -95,11 +107,11 @@ class AnalysisService:
         breakdown = await self.github.get_languages(owner, repo)
         return LanguageBreakdownResponse.model_validate(breakdown.model_dump())
 
-    async def fetch_full_report(self, url: str) -> AnalysisResponse:
-        since = datetime.now(timezone.utc) - timedelta(days=90)
+    async def get_metrics_report(self, url: str) -> MetricsReport:
+        now = datetime.now(timezone.utc)
+        since = now - timedelta(days=90)
 
         repo = await self.get_repo(url)
-
         commits, contributors, issues, pulls, tree, languages = await asyncio.gather(
             self.list_commits(url, since=since),
             self.list_contributors(url),
@@ -109,12 +121,148 @@ class AnalysisService:
             self.get_languages(url),
         )
 
-        return AnalysisResponse(
+        # Commit activity
+        latest = max((c.authored_at for c in commits), default=None)
+        if latest and latest.tzinfo is None:
+            latest = latest.replace(tzinfo=timezone.utc)
+        days_since_last = (now - latest).days if latest else 999
+        unique_authors = len({c.author for c in commits})
+
+        buckets = [0] * 13
+        for c in commits:
+            dt = c.authored_at if c.authored_at.tzinfo else c.authored_at.replace(tzinfo=timezone.utc)
+            weeks_ago = (now - dt).days // 7
+            if 0 <= weeks_ago < 13:
+                buckets[12 - weeks_ago] += 1
+        per_week = buckets
+
+        # Contributors (exclude bots)
+        non_bot_contributors = [c for c in contributors if c.type != "Bot"]
+        top_contributors = sorted(non_bot_contributors, key=lambda c: -c.contributions)[:5]
+        total_contrib = sum(c.contributions for c in contributors)
+        top3 = sum(c.contributions for c in sorted(contributors, key=lambda c: -c.contributions)[:3])
+        bus_factor_pct = round(top3 / total_contrib * 100) if total_contrib else 0
+
+        # Issues / PRs
+        real_issues = [i for i in issues if not i.is_pull_request]
+        open_issues = sum(1 for i in real_issues if i.state == "open")
+        closed_issues = sum(1 for i in real_issues if i.state == "closed")
+        open_prs = sum(1 for p in pulls if p.state == "open")
+        closed_prs = sum(1 for p in pulls if p.state == "closed")
+
+        # Hygiene
+        tree_paths = {e.path for e in tree}
+        hygiene = _hygiene(tree_paths)
+        hygiene_passed = sum(1 for h in hygiene if h.ok)
+
+        # Languages
+        total_bytes = sum(languages.bytes_per_language.values()) or 1
+        language_pcts = {
+            lang: round(b / total_bytes * 100)
+            for lang, b in sorted(languages.bytes_per_language.items(), key=lambda x: -x[1])
+        }
+
+        # Scoring
+        if days_since_last <= 1:
+            activity_score = 100
+        elif days_since_last <= 7:
+            activity_score = 85
+        elif days_since_last <= 30:
+            activity_score = 65
+        elif days_since_last <= 90:
+            activity_score = 35
+        else:
+            activity_score = 10
+
+        total_i = open_issues + closed_issues
+        if not total_i:
+            issues_score = 50
+        else:
+            rate = closed_issues / total_i
+            if rate >= 0.9:
+                issues_score = 100
+            elif rate >= 0.7:
+                issues_score = 75
+            elif rate >= 0.5:
+                issues_score = 55
+            else:
+                issues_score = 30
+
+        if bus_factor_pct <= 20:
+            contrib_score = 100
+        elif bus_factor_pct <= 40:
+            contrib_score = 75
+        elif bus_factor_pct <= 60:
+            contrib_score = 50
+        else:
+            contrib_score = 25
+
+        hygiene_score = round(hygiene_passed / len(hygiene) * 100) if hygiene else 0
+        score = round(activity_score * 0.4 + hygiene_score * 0.3 + contrib_score * 0.3)
+
+        if score >= 90:
+            score_label = "Excellent"
+        elif score >= 75:
+            score_label = "Healthy"
+        elif score >= 55:
+            score_label = "Fair"
+        elif score >= 35:
+            score_label = "At risk"
+        else:
+            score_label = "Critical"
+
+        size_kb = repo.size
+        if size_kb < 1024:
+            size_fmt = f"{size_kb} KB"
+        elif size_kb < 1024 * 1024:
+            size_fmt = f"{size_kb / 1024:.1f} MB"
+        else:
+            size_fmt = f"{size_kb / 1024 / 1024:.2f} GB"
+
+        return MetricsReport(
+            slug=repo.full_name,
             repo=repo,
-            commits=commits,
-            contributors=contributors,
-            issues=issues,
-            pulls=pulls,
-            tree=tree,
-            languages=languages,
+            size_fmt=size_fmt,
+            score=score,
+            score_label=score_label,
+            breakdown={
+                "Activity":     activity_score,
+                "Issues / PRs": issues_score,
+                "Hygiene":      hygiene_score,
+                "Contributors": contrib_score,
+            },
+            commits_90d=len(commits),
+            unique_authors=unique_authors,
+            days_since_last=days_since_last,
+            bus_factor_pct=bus_factor_pct,
+            per_week=per_week,
+            top_contributors=top_contributors,
+            open_issues=open_issues,
+            closed_issues=closed_issues,
+            open_prs=open_prs,
+            closed_prs=closed_prs,
+            hygiene=hygiene,
+            hygiene_passed=hygiene_passed,
+            language_pcts=language_pcts,
         )
+
+
+# ── Private helpers ───────────────────────────────────────────────────────────
+
+def _hygiene(paths: set[str]) -> list[HygieneCheck]:
+    def has(*names: str) -> bool:
+        return any(p in paths for p in names)
+
+    def has_prefix(prefix: str) -> bool:
+        return any(p.startswith(prefix) for p in paths)
+
+    ci_ok = has_prefix(".github/workflows/")
+    return [
+        HygieneCheck(ok=has("README.md", "README.rst", "README.txt", "README"),  label="Has README"),
+        HygieneCheck(ok=has("LICENSE", "LICENSE.md", "LICENSE.txt", "LICENCE"),  label="Has LICENSE"),
+        HygieneCheck(ok=ci_ok, label="Has CI configuration", note=".github/workflows" if ci_ok else None),
+        HygieneCheck(ok=has_prefix("tests/") or has_prefix("test/"),             label="Has tests/ directory"),
+        HygieneCheck(ok=has(".gitignore"),                                        label="Has .gitignore"),
+    ]
+
+
