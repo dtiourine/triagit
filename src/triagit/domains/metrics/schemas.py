@@ -1,11 +1,8 @@
 from datetime import datetime
-from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel
+from pydantic import BaseModel
 
-from .utils import validate_github_url
-
-GitHubRepoUrl = Annotated[str, AfterValidator(validate_github_url)]
+from src.triagit.domains.shared.schemas import GitHubRepoUrl
 
 
 class AnalysisRequest(BaseModel):
