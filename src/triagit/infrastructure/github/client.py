@@ -1,5 +1,6 @@
-import httpx
 from datetime import datetime
+
+import httpx
 
 from .config import GitHubConfig
 from .exceptions import (
@@ -14,6 +15,7 @@ from .exceptions import (
 )
 from .schemas import (
     Commit,
+    ContentEntry,
     Contributor,
     FileContent,
     Issue,
@@ -67,7 +69,9 @@ class GitHubClient:
                 raise GitHubUnauthorizedError(message, status, body)
             case 403 if response.headers.get("X-RateLimit-Remaining") == "0":
                 raise GitHubRateLimitError(
-                    message, status, body,
+                    message,
+                    status,
+                    body,
                     reset_at=response.headers.get("X-RateLimit-Reset"),
                 )
             case 403:
@@ -98,7 +102,9 @@ class GitHubClient:
         data = await self._get(f"/repos/{repo_owner}/{repo_name}/commits", params)
         return [Commit.model_validate(item) for item in data]
 
-    async def list_contributors(self, repo_owner: str, repo_name: str) -> list[Contributor]:
+    async def list_contributors(
+        self, repo_owner: str, repo_name: str
+    ) -> list[Contributor]:
         data = await self._get(
             f"/repos/{repo_owner}/{repo_name}/contributors", {"per_page": 100}
         )
@@ -132,7 +138,9 @@ class GitHubClient:
         )
         return IssueSearchResult.model_validate(data).total_count
 
-    async def get_tree(self, repo_owner: str, repo_name: str, tree_sha: str) -> RepoTree:
+    async def get_tree(
+        self, repo_owner: str, repo_name: str, tree_sha: str
+    ) -> RepoTree:
         data = await self._get(
             f"/repos/{repo_owner}/{repo_name}/git/trees/{tree_sha}",
             {"recursive": 1},
@@ -151,3 +159,11 @@ class GitHubClient:
     async def get_languages(self, repo_owner: str, repo_name: str) -> LanguageBreakdown:
         data = await self._get(f"/repos/{repo_owner}/{repo_name}/languages")
         return LanguageBreakdown.model_validate(data)
+
+    async def list_contents(
+        self, repo_owner: str, repo_name: str, path: str = ""
+    ) -> list[ContentEntry]:
+        data = await self._get(f"/repos/{repo_owner}/{repo_name}/contents/{path}")
+        if not isinstance(data, list):
+            return [ContentEntry.model_validate(data)]
+        return [ContentEntry.model_validate(item) for item in data]

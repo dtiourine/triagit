@@ -178,3 +178,11 @@ class LanguageBreakdown(GitHubModel):
         if isinstance(v, dict) and "bytes_per_language" not in v:
             return {"bytes_per_language": v}
         return v
+
+
+class ContentEntry(GitHubModel):
+    name: str
+    path: str
+    type: Literal["file", "dir", "symlink", "submodule"]
+    size: int
+    sha: str
