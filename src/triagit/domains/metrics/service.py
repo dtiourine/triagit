@@ -12,32 +12,29 @@ class AnalysisService:
     def __init__(self, github: GitHubClient):
         self.github = github
 
-    def _parse_repo_url(self, url: str) -> tuple[str, str]:
-        owner, repo = urlparse(url).path.strip("/").split("/")[:2]
-        return owner, repo
-
     async def get_metrics_report(self, url: str) -> MetricsReport:
         now = datetime.now(timezone.utc)
         since = now - timedelta(days=90)
-        owner, repo_name = self._parse_repo_url(url)
+        owner, repo_name = urlparse(url).path.strip("/").split("/")[:2]
 
         repo: RepoInfo = await self.github.get_repo(owner, repo_name)
 
-        (commits, contributors, tree, languages), (open_issues, closed_issues, open_prs, closed_prs) = (
-            await asyncio.gather(
-                asyncio.gather(
-                    self.github.list_commits(owner, repo_name, since=since),
-                    self.github.list_contributors(owner, repo_name),
-                    self.github.get_tree(owner, repo_name, repo.default_branch),
-                    self.github.get_languages(owner, repo_name),
-                ),
-                asyncio.gather(
-                    self.github.count_issues(owner, repo_name, is_pr=False, state="open"),
-                    self.github.count_issues(owner, repo_name, is_pr=False, state="closed"),
-                    self.github.count_issues(owner, repo_name, is_pr=True,  state="open"),
-                    self.github.count_issues(owner, repo_name, is_pr=True,  state="closed"),
-                ),
-            )
+        (
+            (commits, contributors, tree, languages),
+            (open_issues, closed_issues, open_prs, closed_prs),
+        ) = await asyncio.gather(
+            asyncio.gather(
+                self.github.list_commits(owner, repo_name, since=since),
+                self.github.list_contributors(owner, repo_name),
+                self.github.get_tree(owner, repo_name, repo.default_branch),
+                self.github.get_languages(owner, repo_name),
+            ),
+            asyncio.gather(
+                self.github.count_issues(owner, repo_name, is_pr=False, state="open"),
+                self.github.count_issues(owner, repo_name, is_pr=False, state="closed"),
+                self.github.count_issues(owner, repo_name, is_pr=True, state="open"),
+                self.github.count_issues(owner, repo_name, is_pr=True, state="closed"),
+            ),
         )
 
         # Commit activity
@@ -49,7 +46,11 @@ class AnalysisService:
 
         buckets = [0] * 13
         for c in commits:
-            dt = c.authored_at if c.authored_at.tzinfo else c.authored_at.replace(tzinfo=timezone.utc)
+            dt = (
+                c.authored_at
+                if c.authored_at.tzinfo
+                else c.authored_at.replace(tzinfo=timezone.utc)
+            )
             weeks_ago = (now - dt).days // 7
             if 0 <= weeks_ago < 13:
                 buckets[12 - weeks_ago] += 1
@@ -58,11 +59,16 @@ class AnalysisService:
         # Contributors (exclude bots)
         non_bot = [c for c in contributors if c.type != "Bot"]
         top_contributors = [
-            ContributorResponse(login=c.login, contributions=c.contributions, type=c.type)
+            ContributorResponse(
+                login=c.login, contributions=c.contributions, type=c.type
+            )
             for c in sorted(non_bot, key=lambda c: -c.contributions)[:5]
         ]
         total_contrib = sum(c.contributions for c in contributors)
-        top3 = sum(c.contributions for c in sorted(contributors, key=lambda c: -c.contributions)[:3])
+        top3 = sum(
+            c.contributions
+            for c in sorted(contributors, key=lambda c: -c.contributions)[:3]
+        )
         bus_factor_pct = round(top3 / total_contrib * 100) if total_contrib else 0
 
         # Hygiene
@@ -74,7 +80,9 @@ class AnalysisService:
         total_bytes = sum(languages.bytes_per_language.values()) or 1
         language_pcts = {
             lang: round(b / total_bytes * 100)
-            for lang, b in sorted(languages.bytes_per_language.items(), key=lambda x: -x[1])
+            for lang, b in sorted(
+                languages.bytes_per_language.items(), key=lambda x: -x[1]
+            )
         }
 
         # Scoring
@@ -152,9 +160,9 @@ class AnalysisService:
             score=score,
             score_label=score_label,
             breakdown={
-                "Activity":     activity_score,
+                "Activity": activity_score,
                 "Issues / PRs": issues_score,
-                "Hygiene":      hygiene_score,
+                "Hygiene": hygiene_score,
                 "Contributors": contrib_score,
             },
             commits_90d=len(commits),
@@ -175,6 +183,7 @@ class AnalysisService:
 
 # ── Private helpers ───────────────────────────────────────────────────────────
 
+
 def _hygiene(paths: set[str]) -> list[HygieneCheck]:
     def has(*names: str) -> bool:
         return any(p in paths for p in names)
@@ -184,9 +193,21 @@ def _hygiene(paths: set[str]) -> list[HygieneCheck]:
 
     ci_ok = has_prefix(".github/workflows/")
     return [
-        HygieneCheck(ok=has("README.md", "README.rst", "README.txt", "README"),  label="Has README"),
-        HygieneCheck(ok=has("LICENSE", "LICENSE.md", "LICENSE.txt", "LICENCE"),  label="Has LICENSE"),
-        HygieneCheck(ok=ci_ok, label="Has CI configuration", note=".github/workflows" if ci_ok else None),
-        HygieneCheck(ok=has_prefix("tests/") or has_prefix("test/"),             label="Has tests/ directory"),
-        HygieneCheck(ok=has(".gitignore"),                                        label="Has .gitignore"),
+        HygieneCheck(
+            ok=has("README.md", "README.rst", "README.txt", "README"),
+            label="Has README",
+        ),
+        HygieneCheck(
+            ok=has("LICENSE", "LICENSE.md", "LICENSE.txt", "LICENCE"),
+            label="Has LICENSE",
+        ),
+        HygieneCheck(
+            ok=ci_ok,
+            label="Has CI configuration",
+            note=".github/workflows" if ci_ok else None,
+        ),
+        HygieneCheck(
+            ok=has_prefix("tests/") or has_prefix("test/"), label="Has tests/ directory"
+        ),
+        HygieneCheck(ok=has(".gitignore"), label="Has .gitignore"),
     ]

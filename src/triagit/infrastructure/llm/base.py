@@ -1,4 +1,5 @@
-from typing import Protocol, TypeVar, Type
+from pyexpat import model
+from typing import Protocol, Type, TypeVar
 
 from pydantic import BaseModel
 
@@ -6,4 +7,8 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class LLMClient(Protocol):
-    async def generate_structured_response(self, prompt: str, schema: Type[T], max_tokens: int = ...) -> T: ...
+    model: str
+
+    async def generate_structured_response(
+        self, prompt: str, schema: Type[T], max_tokens: int = ...
+    ) -> T: ...
