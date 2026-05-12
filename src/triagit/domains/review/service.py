@@ -4,8 +4,9 @@ from urllib.parse import urlparse
 from triagit.infrastructure.github.client import GitHubClient
 from triagit.infrastructure.llm.base import LLMClient
 
+from triagit.domains.sampling.sampler import SampledSource, sample_repo
+
 from .prompts import REVIEW_INSTRUCTIONS
-from .sampler import SampledSource, sample_repo
 from .schemas import (
     ExcerptLine,
     Finding,
