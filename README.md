@@ -1,11 +1,15 @@
 # triagit
 
-> ⚠️ Work in progress — interfaces and scope are still changing.
+> ⚠️ Work in progress
 
-A FastAPI service that analyzes the health of any public GitHub repository. Point it
-at an `owner/repo`, and it pulls metadata, commits, contributors, issues, PRs, the
-file tree, and language breakdown via the GitHub API and returns a consolidated
-report — through a web UI or a JSON API.
+**Remember that side project you completely forgot about?** triagit looks at an
+abandoned GitHub repository and tells you the state you left it in, how close it
+is to "done," and the shortest roadmap to a minimal finished version — so it no
+longer feels abandoned.
+
+Point it at an `owner/repo` and it pulls metadata, commits, contributors, issues,
+PRs, the file tree, and language breakdown via the GitHub API, then turns that
+into a revival report.
 
 ## Status
 
@@ -13,7 +17,8 @@ report — through a web UI or a JSON API.
 |---|---|
 | Metrics report (web UI + JSON API) | Working |
 | File sampling API | Working |
-| LLM-powered code review | In progress — provider infra in place; the web report currently renders mock review data |
+| LLM code-quality review | In progress — provider infra in place; web report renders mock data |
+| Revival report | Planned, not started |
 
 ## Quickstart
 
@@ -45,7 +50,7 @@ Settings load from `.env` via `pydantic-settings`.
 | Variable | Required | Notes |
 |---|---|---|
 | `GITHUB_TOKEN` | Yes | GitHub personal access token |
-| `LLM_API_KEY` | No | Only for the in-progress LLM review feature |
+| `LLM_API_KEY` | No | Only for the in-progress LLM features |
 
 ## API
 
