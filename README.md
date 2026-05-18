@@ -4,7 +4,7 @@
 
 **Remember that side project you completely forgot about?** triagit looks at an
 abandoned GitHub repository and tells you the state you left it in, how close it
-is to "done," and the shortest roadmap to a minimal finished version — so it no
+is to "done," and the shortest roadmap to a minimal finished version so it no
 longer feels abandoned.
 
 Point it at an `owner/repo` and it pulls metadata, commits, contributors, issues,
