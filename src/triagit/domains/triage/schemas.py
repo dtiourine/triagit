@@ -20,3 +20,30 @@ class HygieneChecklist(BaseModel):
     has_ci: bool
     has_tests: bool
     has_gitignore: bool
+
+
+class ArchitectureEntry(BaseModel):
+    path: str
+    description: str
+
+
+class CodeGap(BaseModel):
+    description: str
+    file: str | None = None
+
+
+class _LLMAnalysisOutput(BaseModel):
+    summary: str
+    architecture: list[ArchitectureEntry]
+    code_gaps: list[CodeGap]
+
+
+class CodeRefresher(BaseModel):
+    summary: str
+    languages: dict[str, int]
+    architecture: list[ArchitectureEntry]
+
+
+class CompletionRoadmap(BaseModel):
+    hygiene: HygieneChecklist
+    code_gaps: list[CodeGap]
