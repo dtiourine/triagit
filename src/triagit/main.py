@@ -5,8 +5,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from triagit.domains.metrics.router import router as metrics_router
 from triagit.domains.sampling.router import router as sampling_router
+from triagit.domains.triage.router import router as triage_router
 from triagit.infrastructure.github.exceptions import GitHubAPIError, GitHubTransportError
 from triagit.domains.web.router import router as web_router, templates
 
@@ -15,7 +15,7 @@ app = FastAPI()
 _web_static = Path(__file__).parent / "domains" / "web" / "static"
 app.mount("/static", StaticFiles(directory=_web_static), name="static")
 app.include_router(web_router)
-app.include_router(metrics_router, prefix="/api/v1")
+app.include_router(triage_router, prefix="/api/v1")
 app.include_router(sampling_router, prefix="/api/v1")
 
 
