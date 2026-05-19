@@ -4,9 +4,7 @@ from datetime import datetime
 from triagit.infrastructure.github.schemas import Commit, PullRequest
 
 
-class RepoStatistics(BaseModel):
-    owner: str
-    name: str
+class RecentActivity(BaseModel):
     stars_count: int
     forks_count: int
 
