@@ -3,10 +3,6 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from triagit.domains.metrics.service import AnalysisService
-from triagit.infrastructure.github.client import GitHubClient
-from triagit.infrastructure.github.config import get_github_config
-from triagit.infrastructure.github.exceptions import GitHubAPIError, GitHubTransportError
 
 router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
@@ -297,42 +293,8 @@ async def analyze(request: Request, url: str = Form(...)):
 
 @router.get("/report", response_class=HTMLResponse)
 async def report(request: Request, url: str):
-    async with GitHubClient(get_github_config()) as github:
-        service = AnalysisService(github)
-        try:
-            r = await service.get_metrics_report(url)
-        except GitHubAPIError as exc:
-            if exc.status_code == 404:
-                title, message = "Repository not found", (
-                    "We couldn't find that repository. "
-                    "It may be private, deleted, or the URL might be malformed."
-                )
-            elif exc.status_code == 403:
-                title, message = "Rate limited", (
-                    "We're temporarily unable to analyze new repos. "
-                    "Please try again in a few minutes."
-                )
-            else:
-                title, message = "GitHub API error", str(exc)
-            from urllib.parse import urlparse
-            path = urlparse(url).path.strip("/")
-            slug = "/".join(path.split("/")[:2]) if path else None
-            return templates.TemplateResponse(
-                request,
-                "error.html",
-                {"title": title, "message": message, "slug": slug},
-                status_code=exc.status_code,
-            )
-        except GitHubTransportError as exc:
-            return templates.TemplateResponse(
-                request,
-                "error.html",
-                {
-                    "title": "Connection error",
-                    "message": "Unable to reach GitHub. Please check your connection and try again.",
-                    "slug": None,
-                },
-                status_code=503,
-            )
-
-    return templates.TemplateResponse(request, "report.html", {"r": r, "review": MOCK_REVIEW})
+    return templates.TemplateResponse(
+        request,
+        "error.html",
+        {"title": "Coming soon", "message": "The report UI is being redesigned.", "slug": None},
+    )
