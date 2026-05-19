@@ -6,6 +6,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `triagit` is a FastAPI service that analyzes the health of any GitHub repository. It fetches repo metadata, commits, contributors, issues, PRs, file tree, and language breakdown via the GitHub API and returns a consolidated report. LLM-based analysis (`src/triagit/llm/`) is under active development.
 
+> **⚠️ Planned pivot — read before doing feature work.** The product is being
+> reframed from a generic repo-health analyzer into a **project revival tool**
+> ("revive that side project you abandoned"). When the user returns to feature
+> work, remind them of these already-made decisions:
+>
+> - One repo at a time (paste a URL); no account scanning.
+> - Hybrid "done" definition: LLM infers project type + proposes what "minimally
+>   finished" means, user confirms/adjusts, *then* the roadmap is generated.
+> - Revival report is the primary output (state → what "done" means → ordered
+>   roadmap of remaining work). Code-quality review stays as a secondary tab.
+> - Likely shape: a new `revival` domain module alongside `review`, two
+>   synchronous LLM calls (infer target → confirm → build roadmap), reusing the
+>   existing metrics/sampling/review code.
+>
+> None of this is built yet — it is planning only, deferred at the user's
+> request. Do not start implementing it unprompted. See README "Direction" section.
+
 ## Commands
 
 ```bash
