@@ -27,26 +27,39 @@ class TriageService:
         repo_owner, repo_name = urlparse(repo_url).path.strip("/").split("/")[:2]
         cutoff = datetime.now(timezone.utc) - timedelta(days=30)
 
-        repo_info, commits, pull_requests, root_entries, workflows_entries = (
-            await asyncio.gather(
-                self._github.get_repo(repo_owner=repo_owner, repo_name=repo_name),
-                self._github.list_commits(
-                    repo_owner=repo_owner, repo_name=repo_name, since=cutoff
-                ),
-                self._github.list_pulls(
-                    repo_owner=repo_owner, repo_name=repo_name, state="open"
-                ),
-                self._github.list_contents(repo_owner, repo_name, ""),
-                self._fetch_workflows(repo_owner, repo_name),
-            )
+        (
+            repo_info, commits, pull_requests,
+            root_entries, workflows_entries, language_breakdown,
+        ) = await asyncio.gather(
+            self._github.get_repo(repo_owner=repo_owner, repo_name=repo_name),
+            self._github.list_commits(
+                repo_owner=repo_owner, repo_name=repo_name, since=cutoff
+            ),
+            self._github.list_pulls(
+                repo_owner=repo_owner, repo_name=repo_name, state="open"
+            ),
+            self._github.list_contents(repo_owner, repo_name, ""),
+            self._fetch_workflows(repo_owner, repo_name),
+            self._github.get_languages(repo_owner, repo_name),
         )
 
         recent_activity = self._check_recent_activity(
             repo_info, commits, pull_requests, cutoff
         )
-        hygiene_checklist = self._check_hygiene(root_entries, workflows_entries)
+        hygiene = self._check_hygiene(root_entries, workflows_entries)
+        llm_output = await self._analyze_code(repo_owner, repo_name, repo_info)
 
-        return recent_activity, hygiene_checklist
+        refresher = CodeRefresher(
+            summary=llm_output.summary,
+            languages=_language_percentages(language_breakdown),
+            architecture=llm_output.architecture,
+        )
+        roadmap = CompletionRoadmap(
+            hygiene=hygiene,
+            code_gaps=llm_output.code_gaps,
+        )
+
+        return recent_activity, refresher, roadmap
 
     def _check_recent_activity(self, repo_info, commits, pull_requests, cutoff):
         last_30_days_pull_requests = [
@@ -77,6 +90,18 @@ class TriageService:
         except GitHubNotFoundError:
             return []
 
+    async def _analyze_code(
+        self, repo_owner: str, repo_name: str, repo_info: RepoInfo
+    ) -> _LLMAnalysisOutput:
+        sampling, tree = await asyncio.gather(
+            sample_repo(self._github, repo_owner, repo_name, repo_info),
+            self._github.get_tree(repo_owner, repo_name, repo_info.default_branch),
+        )
+
+        all_paths = [e.path for e in tree.files()]
+        prompt = _build_analysis_prompt(sampling.files, all_paths)
+        return await self._llm.generate_structured_response(prompt, _LLMAnalysisOutput)
+
     def _check_hygiene(
         self, root_entries: list[ContentEntry], workflows_entries: list[ContentEntry]
     ) -> HygieneChecklist:
@@ -92,3 +117,23 @@ class TriageService:
             has_tests=has("tests", "test"),
             has_gitignore=has(".gitignore"),
         )
+
+
+def _build_analysis_prompt(files: list[SampledSource], all_paths: list[str]) -> str:
+    parts = [ANALYSIS_INSTRUCTIONS, "\nProject structure:"]
+    parts.extend(all_paths)
+    parts.append("\nSampled files:")
+    for f in files:
+        parts.append(f"\n--- {f.path} ---")
+        parts.append(
+            "\n".join(f"{i + 1:>4}  {line}" for i, line in enumerate(f.content.splitlines()))
+        )
+    return "\n".join(parts)
+
+
+def _language_percentages(breakdown: LanguageBreakdown) -> dict[str, int]:
+    total = sum(breakdown.bytes_per_language.values()) or 1
+    return {
+        lang: round(b / total * 100)
+        for lang, b in sorted(breakdown.bytes_per_language.items(), key=lambda x: -x[1])
+    }
