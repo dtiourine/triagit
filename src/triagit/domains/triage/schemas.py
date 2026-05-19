@@ -45,5 +45,11 @@ class CodeRefresher(BaseModel):
 
 
 class CompletionRoadmap(BaseModel):
-    hygiene: HygieneChecklist
+    hygiene_checklist: HygieneChecklist
     code_gaps: list[CodeGap]
+
+
+class TriageReport(BaseModel):
+    recent_activity: RecentActivity
+    refresher: CodeRefresher
+    roadmap: CompletionRoadmap

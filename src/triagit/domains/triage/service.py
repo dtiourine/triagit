@@ -10,6 +10,7 @@ from triagit.domains.triage.schemas import (
     CompletionRoadmap,
     HygieneChecklist,
     RecentActivity,
+    TriageReport,
     _LLMAnalysisOutput,
 )
 from triagit.infrastructure.github.client import GitHubClient
@@ -23,7 +24,7 @@ class TriageService:
         self._github = github
         self._llm = llm
 
-    async def get_triage_report(self, repo_url: str):
+    async def get_triage_report(self, repo_url: str) -> TriageReport:
         repo_owner, repo_name = urlparse(repo_url).path.strip("/").split("/")[:2]
         cutoff = datetime.now(timezone.utc) - timedelta(days=30)
 
@@ -46,7 +47,7 @@ class TriageService:
         recent_activity = self._check_recent_activity(
             repo_info, commits, pull_requests, cutoff
         )
-        hygiene = self._check_hygiene(root_entries, workflows_entries)
+        hygiene_checklist = self._check_hygiene(root_entries, workflows_entries)
         llm_output = await self._analyze_code(repo_owner, repo_name, repo_info)
 
         refresher = CodeRefresher(
@@ -55,11 +56,15 @@ class TriageService:
             architecture=llm_output.architecture,
         )
         roadmap = CompletionRoadmap(
-            hygiene=hygiene,
+            hygiene_checklist=hygiene_checklist,
             code_gaps=llm_output.code_gaps,
         )
 
-        return recent_activity, refresher, roadmap
+        return TriageReport(
+            recent_activity=recent_activity,
+            refresher=refresher,
+            roadmap=roadmap,
+        )
 
     def _check_recent_activity(self, repo_info, commits, pull_requests, cutoff):
         last_30_days_pull_requests = [
