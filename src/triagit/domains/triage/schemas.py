@@ -14,7 +14,7 @@ class RecentActivity(BaseModel):
     last_commit_date: datetime | None
 
 
-class HygieneReport(BaseModel):
+class HygieneChecklist(BaseModel):
     has_readme: bool
     has_license: bool
     has_ci: bool
