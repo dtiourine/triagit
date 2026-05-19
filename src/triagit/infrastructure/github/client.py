@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 import httpx
 
@@ -111,7 +112,7 @@ class GitHubClient:
         return [Contributor.model_validate(item) for item in data]
 
     async def list_issues(
-        self, repo_owner: str, repo_name: str, state: str = "all", max_pages=None
+        self, repo_owner: str, repo_name: str, state: Literal["open", "closed", "all"] = "all", max_pages=None
     ) -> list[Issue]:
         data = await self._get(
             f"/repos/{repo_owner}/{repo_name}/issues",
@@ -120,7 +121,7 @@ class GitHubClient:
         return [Issue.model_validate(item) for item in data]
 
     async def list_pulls(
-        self, repo_owner: str, repo_name: str, state: str = "all", max_pages=None
+        self, repo_owner: str, repo_name: str, state: Literal["open", "closed", "all"] = "all", max_pages=None
     ) -> list[PullRequest]:
         data = await self._get(
             f"/repos/{repo_owner}/{repo_name}/pulls",
@@ -129,7 +130,7 @@ class GitHubClient:
         return [PullRequest.model_validate(item) for item in data]
 
     async def count_issues(
-        self, repo_owner: str, repo_name: str, is_pr: bool, state: str
+        self, repo_owner: str, repo_name: str, is_pr: bool, state: Literal["open", "closed"]
     ) -> int:
         kind = "pr" if is_pr else "issue"
         data = await self._get(
