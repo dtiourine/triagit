@@ -12,3 +12,11 @@ class RecentActivity(BaseModel):
     last_30_days_pull_requests: list[PullRequest]
     top_5_recent_contributors: list[str]
     last_commit_date: datetime | None
+
+
+class HygieneReport(BaseModel):
+    has_readme: bool
+    has_license: bool
+    has_ci: bool
+    has_tests: bool
+    has_gitignore: bool

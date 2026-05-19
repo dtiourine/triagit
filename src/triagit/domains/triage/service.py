@@ -3,7 +3,7 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
-from triagit.domains.triage.schemas import RecentActivity
+from triagit.domains.triage.schemas import HygieneReport, RecentActivity
 from triagit.infrastructure.github.client import GitHubClient
 from triagit.infrastructure.llm.base import LLMClient
 
@@ -48,4 +48,19 @@ class TriageService:
             last_30_days_pull_requests=last_30_days_pull_requests,
             top_5_recent_contributors=top_5_recent_contributors,
             last_commit_date=repo_info.pushed_at,
+        )
+
+    def _check_hygiene(self, tree_paths: set[str]) -> HygieneReport:
+        def has(*names: str) -> bool:
+            return any(p in tree_paths for p in names)
+
+        def has_prefix(prefix: str) -> bool:
+            return any(p.startswith(prefix) for p in tree_paths)
+
+        return HygieneReport(
+            has_readme=has("README.md", "README.rst", "README.txt", "README"),
+            has_license=has("LICENSE", "LICENSE.md", "LICENSE.txt", "LICENCE"),
+            has_ci=has_prefix(".github/workflows/"),
+            has_tests=has_prefix("tests/") or has_prefix("test/"),
+            has_gitignore=has(".gitignore"),
         )
