@@ -4,34 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`triagit` is a FastAPI service that analyzes the health of any GitHub repository. It fetches repo metadata, commits, contributors, issues, PRs, file tree, and language breakdown via the GitHub API and returns a consolidated report. LLM-based analysis (`src/triagit/llm/`) is under active development.
+`triagit` is a FastAPI service that triages abandoned GitHub repositories. Paste a `github.com/owner/repo` URL and it returns a structured triage report: a code refresher (LLM summary + architecture), a completion roadmap (LLM code gaps), and a hygiene checklist. If the repo shows activity in the last 30 days, it surfaces a warning.
 
-> **⚠️ Planned pivot — read before doing feature work.** The product is being
-> reframed from a generic repo-health analyzer into a **project revival tool**
-> ("revive that side project you abandoned"). When the user returns to feature
-> work, remind them of these already-made decisions:
->
-> - One repo at a time (paste a URL); no account scanning.
-> - Hybrid "done" definition: LLM infers project type + proposes what "minimally
->   finished" means, user confirms/adjusts, *then* the roadmap is generated.
-> - Revival report is the primary output (state → what "done" means → ordered
->   roadmap of remaining work). Code-quality review stays as a secondary tab.
-> - Likely shape: a new `revival` domain module alongside `review`, two
->   synchronous LLM calls (infer target → confirm → build roadmap), reusing the
->   existing metrics/sampling/review code.
->
-> None of this is built yet — it is planning only, deferred at the user's
-> request. Do not start implementing it unprompted. See README "Direction" section.
+The app is stateless — no database, no persistence, pure request/response.
 
 ## Commands
 
 ```bash
-# Install (use uv if available, matches Dockerfile)
+# Install (uv recommended)
 uv pip install --system -e ".[dev]"
 # or
 pip install -e ".[dev]"
 
 # Run dev server
+uv run dev
+# or
 uvicorn triagit.main:app --reload
 
 # Lint
@@ -44,9 +31,6 @@ mypy src/
 # Tests
 pytest
 pytest tests/path/to/test_file.py::test_name   # single test
-
-# Docker (includes postgres + redis)
-docker-compose up
 ```
 
 ## Required environment variables
@@ -56,36 +40,61 @@ All configs use `pydantic-settings` reading from `.env`:
 | Variable | Required | Notes |
 |---|---|---|
 | `GITHUB_TOKEN` | Yes | GitHub personal access token |
-| `LLM_API_KEY` | No | For future LLM providers |
-
-The `GlobalConfig` (no prefix) and `GitHubConfig` (`GITHUB_` prefix) classes both load from `.env`.
+| `LLM_API_KEY` | Yes | Anthropic API key |
+| `LLM_MODEL` | No | Defaults to `claude-haiku-4-5-20251001` |
 
 ## Architecture
 
 ### Request flow
 
 ```
-HTTP request
-  → FastAPI router (analysis/router.py)
-  → AnalysisService (analysis/service.py)      # parses URLs, orchestrates
-  → GitHubClient (github/client.py)            # async httpx wrapper
-  → GitHub REST API
+Browser form (POST /analyze)
+  → loading.html fetches GET /report?url=...
+  → web/router.py calls TriageService
+  → TriageService orchestrates via asyncio.gather:
+      GitHubClient (6 parallel API calls)
+      + LLM analysis (summary, architecture, code gaps)
+  → report.html rendered and returned
 ```
 
-`POST /api/v1/analysis/analyses` runs all fetches concurrently via `asyncio.gather` and returns `AnalysisResponse` (the full report).
+API consumers can call `GET /api/v1/triage/reports?url=<github_url>` directly for the JSON response.
 
 ### Module layout
 
-- **`triagit/main.py`** — FastAPI app entry point; registers the analysis router and global exception handlers for `GitHubAPIError` and `GitHubTransportError`.
-- **`triagit/analysis/`** — The core domain layer. `router.py` defines all endpoints under `/api/v1/analysis`. `service.py` is the only place that calls `GitHubClient`. `dependencies.py` wires FastAPI DI: each request gets a fresh `GitHubClient` instance (via async context manager) and a new `AnalysisService`.
-- **`triagit/github/`** — Self-contained GitHub API client. `schemas.py` holds frozen Pydantic models that mirror GitHub's JSON. `exceptions.py` has a hierarchy rooted at `GitHubClientError`; the client maps HTTP status codes to specific exception types. Rate-limit detection checks the `X-RateLimit-Remaining` header specifically.
-- **`triagit/llm/`** — New module (in progress). `providers/` will hold `anthropic.py` and `openai.py` implementations. `config.py` has a commented-out `AnthropicConfig` template to follow when implementing.
-- **`triagit/config.py`** — `GlobalConfig` with app-wide limits: `max_concurrent_github_requests`, `max_concurrent_llm_requests`, `daily_llm_budget_usd`, `per_ip_daily_analyses`.
+- **`triagit/main.py`** — FastAPI app entry point; registers routers and global exception handlers.
+- **`triagit/domains/triage/`** — Core domain. `service.py` orchestrates all GitHub fetches and LLM calls. `schemas.py` defines `TriageReport` and its nested models. `router.py` exposes `GET /triage/reports`.
+- **`triagit/domains/sampling/`** — File sampling logic used by the triage service to select representative files for LLM analysis.
+- **`triagit/domains/shared/`** — `GitHubRepoUrl` validated type, shared URL validation utilities.
+- **`triagit/domains/web/`** — Jinja2 templates and web routes (`/`, `/analyze`, `/report`). Uses `TriageServiceDep` directly to render the report page.
+- **`triagit/infrastructure/github/`** — Async httpx wrapper around the GitHub REST API. `client.py` maps HTTP errors to typed exceptions. `schemas.py` holds frozen Pydantic models mirroring GitHub's JSON (never exposed to callers directly).
+- **`triagit/infrastructure/llm/`** — LLM provider abstraction. `base.py` defines `LLMClient` protocol. `providers/anthropic.py` is the active implementation. `dependencies.py` wires FastAPI DI.
+
+### Dependency injection pattern
+
+Dependencies are typed aliases (`Annotated[T, Depends(...)]`) defined in each domain's `dependencies.py`. Routes only import the alias, not the underlying service. Example: `TriageServiceDep` composes `get_github_client` → `get_llm_client` → `get_triage_service`.
 
 ### Schema pattern
 
-GitHub API responses (`github/schemas.py`) use `GitHubModel` (frozen, `extra="ignore"`) and are never exposed directly to API callers. `AnalysisService` maps them to response schemas in `analysis/schemas.py`. The `GitHubRepoUrl` type in `analysis/schemas.py` validates repo URLs via `AfterValidator`.
+GitHub API responses use `GitHubModel` (frozen, `extra="ignore"`) and are never returned directly to callers. The triage service maps them to `TriageReport` defined in `triage/schemas.py`.
 
-### Dependency injection
+## TODO
 
-`AnalysisServiceDep` (a typed alias in `analysis/dependencies.py`) is the only dep used in routes. It composes `get_github_client` → `get_analysis_service`. Adding new dependencies (e.g., an LLM client) follows this pattern.
+The following are known improvements to work on in future sessions. Remind the user of these when relevant.
+
+- **GitHub client retries** — Add retry logic with exponential backoff for rate-limit responses (`429`, `X-RateLimit-Remaining: 0`) and transient errors (`5xx`). The client currently raises immediately on these.
+
+- **API rate limiting & security** — Add per-IP rate limiting to the triage endpoints to prevent abuse (the LLM call makes each request expensive). Also review other security hardening: input validation, request size limits, timeouts.
+
+- **Async correctness audit** — Audit the service and client for any blocking calls running on the event loop (e.g. synchronous I/O, CPU-bound work). Verify `asyncio.gather` usage is optimal and no tasks are inadvertently serialized.
+
+- **Dependency injection review** — Verify all DI wiring is correct: clients are properly scoped per-request, no shared mutable state leaks between requests, async context managers are used where needed.
+
+- **Code cleanup** — General pass for modularity and readability: long functions, unclear naming, any logic that belongs in a different layer, dead code.
+
+- **UI polish** — Continue iterating on the web templates (report page layout, loading experience, mobile responsiveness, edge cases like repos with no code gaps or no languages detected).
+
+## Direction
+
+One repo at a time — paste a URL, get a triage. No account scanning, no dashboards.
+
+A future **revival workflow** is planned but not started: LLM infers what "minimally finished" means for the project type, user confirms/adjusts, then a prioritized roadmap is generated. This would live in a new `revival` domain module. Do not start implementing it unprompted.
