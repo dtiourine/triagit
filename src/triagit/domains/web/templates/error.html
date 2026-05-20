@@ -2,15 +2,15 @@
 {% block title %}Error — triagit{% endblock %}
 
 {% block content %}
-<div class="tg-error">
-  <div class="tg-error-card">
-    <div class="tg-error-tag mono">error</div>
-    <h2 class="tg-error-h">{{ title }}</h2>
-    <p class="tg-error-p">{{ message }}</p>
+<div class="t-error">
+  <div class="t-error-card">
+    <div class="t-error-tag mono">error</div>
+    <h2 class="t-error-h">{{ title }}</h2>
+    <p class="t-error-p">{{ message }}</p>
     {% if slug %}
-    <div class="tg-error-slug mono">{{ slug }}</div>
+    <div class="t-error-slug mono">{{ slug }}</div>
     {% endif %}
-    <a href="/" class="tg-btn tg-btn-primary">Try again</a>
+    <a href="/" class="t-btn t-btn-primary">Try again</a>
   </div>
 </div>
 {% endblock %}

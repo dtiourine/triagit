@@ -1,28 +1,32 @@
 {% extends "base.html" %}
-{% block title %}triagit — Repository health, at a glance{% endblock %}
+{% block title %}triagit — triage abandoned repositories{% endblock %}
 
 {% block content %}
-<div class="tg-landing">
-  <div class="tg-landing-inner">
+<div class="t-landing">
+  <div class="t-landing-inner">
 
-    <div class="tg-mark">
-      <span class="tg-mark-glyph" aria-hidden="true">
-        <span></span><span></span><span></span>
-      </span>
-      <span class="tg-mark-name">triagit</span>
-    </div>
+    <span class="t-wordmark">
+      <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true" class="t-mark-svg">
+        <path d="M1.5 4.5h9l4.5 4.5-4.5 4.5h-9z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        <circle cx="5" cy="9" r="1.4" fill="currentColor"/>
+      </svg>
+      <span class="t-wordmark-name">triagit</span>
+    </span>
 
-    <h1 class="tg-landing-h1">Repository health, at a glance.</h1>
-    <p class="tg-landing-sub">Paste a public GitHub URL. Get a structured read on activity, hygiene, and contributor health.</p>
+    <h1 class="t-landing-h1">Triage your abandoned repositories.</h1>
+    <p class="t-landing-sub">
+      Paste a GitHub URL to get a structured read on what your forgotten project does
+      and what's left to finish.
+    </p>
 
-    <form class="tg-form" method="post" action="/analyze"
+    <form class="t-form" method="post" action="/analyze"
           hx-post="/analyze" hx-target="body" hx-swap="outerHTML"
           onsubmit="var i=document.getElementById('url-input'); i.value='https://github.com/'+i.value.replace(/^(https?:\/\/)?(www\.)?github\.com\//i,'')">
-      <div class="tg-input-wrap" id="input-wrap">
-        <span class="tg-input-prefix">https://github.com/</span>
+      <div class="t-input-wrap{% if error %} is-err{% endif %}">
+        <span class="t-input-prefix">https://github.com/</span>
         <input
           id="url-input"
-          class="tg-input"
+          class="t-input mono"
           type="text"
           name="url"
           spellcheck="false"
@@ -33,45 +37,18 @@
           autofocus
           required
         />
-        <button type="submit" class="tg-btn tg-btn-primary">
-          Analyze
+        <button type="submit" class="t-btn t-btn-primary">
+          Triage
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <path d="M3 7h8m0 0L7.5 3.5M11 7l-3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
       </div>
       {% if error %}
-      <div class="tg-input-err">{{ error }}</div>
+      <div class="t-input-err">{{ error }}</div>
       {% endif %}
     </form>
 
-    <div class="tg-examples">
-      <span class="tg-examples-label">Try</span>
-      <button class="tg-example" type="button"
-              hx-post="/analyze" hx-target="body" hx-swap="outerHTML"
-              hx-vals='{"url": "https://github.com/fastapi/fastapi"}'>
-        <span class="mono">fastapi/fastapi</span>
-      </button>
-      <span class="tg-examples-sep">·</span>
-      <button class="tg-example" type="button"
-              hx-post="/analyze" hx-target="body" hx-swap="outerHTML"
-              hx-vals='{"url": "https://github.com/django/django"}'>
-        <span class="mono">django/django</span>
-      </button>
-      <span class="tg-examples-sep">·</span>
-      <button class="tg-example" type="button"
-              hx-post="/analyze" hx-target="body" hx-swap="outerHTML"
-              hx-vals='{"url": "https://github.com/kubernetes/kubernetes"}'>
-        <span class="mono">kubernetes/kubernetes</span>
-      </button>
-    </div>
-
   </div>
-
-  <footer class="tg-foot">
-    <span class="mono">triagit</span>
-    <span class="tg-foot-sep">·</span>
-    <span>Stateless. No accounts. No tracking.</span>
-  </footer>
 </div>
 {% endblock %}
