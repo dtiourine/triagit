@@ -54,10 +54,6 @@
               <path d="M4 2H2v7h7V7M6 2h3v3M5 6l4-4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </a>
-          <span class="t-rh-state{% if has_activity %} t-rh-state-active{% endif %}">
-            <span class="t-rh-state-dot"></span>
-            {% if has_activity %}shows recent activity{% else %}inactive{% endif %}
-          </span>
         </div>
         {% if langs %}
         <div class="t-rh-badges">
@@ -92,12 +88,12 @@
       </div>
     </div>
 
-    {# ── 00 · Activity warning ───────────────────────────────────────────── #}
+    {# ── Activity warning ────────────────────────────────────────────────── #}
     {% if has_activity %}
     <section class="t-section t-section-warn">
       <header class="t-section-h">
         <div class="t-section-h-l">
-          <div class="t-kicker mono">00 · check</div>
+          <h2 class="t-section-title">Recent activity</h2>
         </div>
       </header>
       <div class="t-section-body">
@@ -108,7 +104,7 @@
                 <path d="M7 1.5L13 12H1L7 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
                 <path d="M7 5.5v3M7 10v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
               </svg>
-              Recent activity
+              Check
             </span>
             <span class="t-warn-q">Are you sure this is abandoned?</span>
           </div>
@@ -140,15 +136,12 @@
     </section>
     {% endif %}
 
-    {# ── 01 · Code refresher ─────────────────────────────────────────────── #}
+    {# ── Code refresher ──────────────────────────────────────────────────── #}
     <section class="t-section">
       <header class="t-section-h">
         <div class="t-section-h-l">
-          <div class="t-kicker mono">01 · refresher</div>
           <h2 class="t-section-title">Code refresher</h2>
-          <p class="t-section-subtitle">A 30-second re-orientation, written by reading the source.</p>
         </div>
-        <div class="t-section-aside"><span class="t-aside-ai">LLM</span></div>
       </header>
       <div class="t-section-body">
         <div class="t-refr">
@@ -189,13 +182,55 @@
       </div>
     </section>
 
-    {# ── 02 · Hygiene checklist ──────────────────────────────────────────── #}
+    {# ── Completion roadmap ──────────────────────────────────────────────── #}
     <section class="t-section">
       <header class="t-section-h">
         <div class="t-section-h-l">
-          <div class="t-kicker mono">02 · hygiene</div>
+          <h2 class="t-section-title">Completion roadmap</h2>
+        </div>
+      </header>
+      <div class="t-section-body">
+        <div class="t-roadmap">
+          <div class="t-roadmap-group">
+            <div class="t-roadmap-head">
+              <div class="t-roadmap-h">
+                <span class="t-roadmap-label">Code completion gaps</span>
+              </div>
+              {% set gap_count = report.roadmap.code_gaps | length %}
+              <div class="t-roadmap-count mono">{{ gap_count }} {{ 'gap' if gap_count == 1 else 'gaps' }}</div>
+            </div>
+            <ul class="t-tasks">
+              {% for gap in report.roadmap.code_gaps %}
+              <li class="t-task t-task-code">
+                <span class="t-task-pin" aria-hidden="true">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <circle cx="6" cy="6" r="2" stroke="currentColor" stroke-width="1.2" fill="currentColor"/>
+                    <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/>
+                  </svg>
+                </span>
+                <div class="t-task-body">
+                  <span class="t-task-title">{{ gap.description }}</span>
+                  {% if gap.file %}
+                  <div class="t-task-src mono">{{ gap.file }}</div>
+                  {% endif %}
+                </div>
+              </li>
+              {% else %}
+              <li class="t-task" style="color: var(--muted); font-size: 13.5px; border-top: 0; padding-top: 4px;">
+                No major gaps detected.
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {# ── Hygiene checklist ───────────────────────────────────────────────── #}
+    <section class="t-section">
+      <header class="t-section-h">
+        <div class="t-section-h-l">
           <h2 class="t-section-title">Hygiene checklist</h2>
-          <p class="t-section-subtitle">Structural pieces a complete project should have. Deterministic.</p>
         </div>
       </header>
       <div class="t-section-body">
@@ -231,66 +266,6 @@
         </div>
       </div>
     </section>
-
-    {# ── 03 · Completion roadmap ─────────────────────────────────────────── #}
-    <section class="t-section">
-      <header class="t-section-h">
-        <div class="t-section-h-l">
-          <div class="t-kicker mono">03 · roadmap</div>
-          <h2 class="t-section-title">Completion roadmap</h2>
-          <p class="t-section-subtitle">What would need to happen for this repo to feel complete.</p>
-        </div>
-        <div class="t-section-aside"><span class="t-aside-ai">LLM</span></div>
-      </header>
-      <div class="t-section-body">
-        <div class="t-roadmap">
-          <div class="t-roadmap-group">
-            <div class="t-roadmap-head">
-              <div class="t-roadmap-h">
-                <span class="t-roadmap-num mono">A</span>
-                <span class="t-roadmap-label">Code completion gaps</span>
-                <span class="t-roadmap-ai">LLM</span>
-              </div>
-              {% set gap_count = report.roadmap.code_gaps | length %}
-              <div class="t-roadmap-count mono">{{ gap_count }} {{ 'gap' if gap_count == 1 else 'gaps' }}</div>
-            </div>
-            <ul class="t-tasks">
-              {% for gap in report.roadmap.code_gaps %}
-              <li class="t-task t-task-code">
-                <span class="t-task-pin" aria-hidden="true">
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <circle cx="6" cy="6" r="2" stroke="currentColor" stroke-width="1.2" fill="currentColor"/>
-                    <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/>
-                  </svg>
-                </span>
-                <div class="t-task-body">
-                  <span class="t-task-title">{{ gap.description }}</span>
-                  {% if gap.file %}
-                  <div class="t-task-src mono">{{ gap.file }}</div>
-                  {% endif %}
-                </div>
-              </li>
-              {% else %}
-              <li class="t-task" style="color: var(--muted); font-size: 13.5px; border-top: 0; padding-top: 4px;">
-                No major gaps detected.
-              </li>
-              {% endfor %}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <footer class="t-foot">
-      <span class="t-wordmark">
-        <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true" class="t-mark-svg">
-          <path d="M1.5 4.5h9l4.5 4.5-4.5 4.5h-9z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
-          <circle cx="5" cy="9" r="1.4" fill="currentColor"/>
-        </svg>
-        <span class="t-wordmark-name">triagit</span>
-      </span>
-      <span class="t-foot-text">Triagit reports state. It doesn't tell you to archive, delete, or revive.</span>
-    </footer>
 
   </div>
 </div>
