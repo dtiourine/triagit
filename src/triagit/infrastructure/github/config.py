@@ -19,6 +19,9 @@ class GitHubConfig(BaseSettings):
     requests_per_hour: int = 5000
     max_concurrent_requests: int = 10
     timeout_seconds: float = 10.0
+    retry_max_attempts: int = 3
+    retry_rate_limit_threshold_seconds: int = 60
+    retry_backoff_base_seconds: float = 1.0
 
 
 @lru_cache(maxsize=1)

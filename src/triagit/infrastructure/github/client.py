@@ -1,3 +1,5 @@
+import asyncio
+import time
 from datetime import datetime
 from typing import Literal
 
@@ -30,6 +32,7 @@ from .schemas import (
 
 class GitHubClient:
     def __init__(self, config: GitHubConfig):
+        self._config = config
         self.requests_per_hour = config.requests_per_hour
         self.max_concurrent_requests = config.max_concurrent_requests
         self._client = httpx.AsyncClient(
@@ -49,42 +52,71 @@ class GitHubClient:
         await self._client.aclose()
 
     async def _get(self, path: str, params: dict | None = None):
-        try:
-            response = await self._client.get(path, params=params)
-        except httpx.RequestError as e:
-            raise GitHubTransportError(str(e)) from e
+        max_attempts = self._config.retry_max_attempts
+        threshold = self._config.retry_rate_limit_threshold_seconds
+        backoff_base = self._config.retry_backoff_base_seconds
 
-        if response.is_success:
-            return response.json()
+        for attempt in range(max_attempts):
+            try:
+                response = await self._client.get(path, params=params)
+            except httpx.RequestError as e:
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(backoff_base * (2 ** attempt))
+                    continue
+                raise GitHubTransportError(str(e)) from e
 
-        try:
-            body = response.json()
-        except Exception:
-            body = {}
+            if response.is_success:
+                return response.json()
 
-        message = body.get("message", response.reason_phrase)
-        status = response.status_code
+            try:
+                body = response.json()
+            except Exception:
+                body = {}
 
-        match status:
-            case 401:
-                raise GitHubUnauthorizedError(message, status, body)
-            case 403 if response.headers.get("X-RateLimit-Remaining") == "0":
-                raise GitHubRateLimitError(
-                    message,
-                    status,
-                    body,
-                    reset_at=response.headers.get("X-RateLimit-Reset"),
-                )
-            case 403:
-                raise GitHubForbiddenError(message, status, body)
-            case 404:
-                raise GitHubNotFoundError(message, status, body)
-            case 422:
-                raise GitHubValidationError(message, status, body)
-            case _ if status >= 500:
-                raise GitHubServerError(message, status, body)
-            case _:
-                raise GitHubAPIError(message, status, body)
+            message = body.get("message", response.reason_phrase)
+            status = response.status_code
+
+            match status:
+                case 401:
+                    raise GitHubUnauthorizedError(message, status, body)
+                case 403 if response.headers.get("X-RateLimit-Remaining") == "0":
+                    reset_at_header = response.headers.get("X-RateLimit-Reset")
+                    exc = GitHubRateLimitError(message, status, body, reset_at=reset_at_header)
+                    if attempt < max_attempts - 1 and reset_at_header:
+                        try:
+                            wait = int(reset_at_header) - time.time()
+                            if 0 < wait <= threshold:
+                                await asyncio.sleep(wait + 1)
+                                continue
+                        except (ValueError, TypeError):
+                            pass
+                    raise exc
+                case 429:
+                    retry_after_raw = response.headers.get("Retry-After")
+                    exc = GitHubRateLimitError(message, status, body, reset_at=None)
+                    if attempt < max_attempts - 1 and retry_after_raw is not None:
+                        try:
+                            retry_after = int(retry_after_raw)
+                            if retry_after <= threshold:
+                                await asyncio.sleep(retry_after)
+                                continue
+                        except (ValueError, TypeError):
+                            pass
+                    raise exc
+                # plain 403 — keep after all guarded 403 cases
+                case 403:
+                    raise GitHubForbiddenError(message, status, body)
+                case 404:
+                    raise GitHubNotFoundError(message, status, body)
+                case 422:
+                    raise GitHubValidationError(message, status, body)
+                case _ if status >= 500:
+                    if attempt < max_attempts - 1:
+                        await asyncio.sleep(backoff_base * (2 ** attempt))
+                        continue
+                    raise GitHubServerError(message, status, body)
+                case _:
+                    raise GitHubAPIError(message, status, body)
 
     async def get_repo(self, repo_owner: str, repo_name: str) -> RepoInfo:
         data = await self._get(f"/repos/{repo_owner}/{repo_name}")
